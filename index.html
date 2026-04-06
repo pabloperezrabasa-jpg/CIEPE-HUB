@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CIEPE — Hub Académico</title>
+<meta name="description" content="Centro Interdisciplinario en Ética, Política y Economía"/>
+<meta name="theme-color" content="#0F4446"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon.png"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#F4EFE7}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+
+if (typeof document !== "undefined" && !document.getElementById("ciepe-fonts")) {
+  const l = document.createElement("link")
+  l.id = "ciepe-fonts"; l.rel = "stylesheet"
+  l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&display=swap"
+  document.head.appendChild(l)
+}
+
+const TEAL   = "#17666A"
+const TEAL_D = "#0F4446"
+const TEAL_L = "#E6F2F2"
+const GOLD   = "#C4993A"
+const GOLD_L = "#FBF5E8"
+const WHITE  = "#FFFFFF"
+const OFF_W  = "#F4EFE7"
+const TEXT   = "#1A1A1A"
+const MUTED  = "#6B7B7B"
+const BORDER = "#D8E8E8"
+
+const MONTHS   = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
+const fmt      = d => { if (!d) return "—"; const [y,m,day]=d.split("-"); return `${parseInt(day)} ${MONTHS[parseInt(m)-1]} ${y}` }
+const daysLeft = d => { if (!d) return null; return Math.ceil((new Date(d)-new Date())/86400000) }
+
+const TIPO_C   = {Ponencia:TEAL,Panel:"#5B4A8A",Seminario:"#2E7D52",Charla:GOLD,Webinar:"#B05E1A",Lanzamiento:"#A02828"}
+const ESTADO_C = {Confirmado:"#2E7D52","En preparación":GOLD,Propuesto:"#9AA",Realizado:TEAL,Cancelado:"#A02828",Abierta:"#2E7D52",Próximamente:GOLD,Cerrada:"#9AA",Activo:"#2E7D52","En formación":GOLD,"En pausa":"#9AA"}
+
+const Badge     = ({text}) => { const c=ESTADO_C[text]||"#9AA"; return <span style={{padding:"2px 8px",borderRadius:3,fontSize:10,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",background:c+"18",color:c,display:"inline-block"}}>{text}</span> }
+const TipoBadge = ({text}) => { const c=TIPO_C[text]||MUTED; return <span style={{padding:"2px 8px",borderRadius:3,fontSize:10,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",background:c+"18",color:c,display:"inline-block"}}>{text}</span> }
+const MetaRow   = ({icon,text,accent}) => <span style={{color:accent?TEAL:MUTED,display:"flex",alignItems:"center",gap:4,fontSize:12}}><span>{icon}</span>{text}</span>
+
+const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${BORDER}`,borderRadius:6,fontSize:13,boxSizing:"border-box",fontFamily:"'DM Sans',sans-serif",outline:"none",color:TEXT,background:WHITE}
+const Field = ({label,children}) => <div style={{marginBottom:14}}><label style={{display:"block",fontSize:11,fontWeight:600,color:MUTED,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</label>{children}</div>
+
+function Inp({k,label,type="text",opts,fd,sf}) {
+  return <Field label={label}>{
+    opts
+      ? <select value={fd[k]||""} onChange={e=>sf(k,e.target.value)} style={inp}><option value="">Seleccionar...</option>{opts.map(o=><option key={o}>{o}</option>)}</select>
+      : type==="textarea"
+        ? <textarea value={fd[k]||""} onChange={e=>sf(k,e.target.value)} rows={3} style={{...inp,resize:"vertical"}}/>
+        : <input type={type} value={fd[k]||""} onChange={e=>sf(k,e.target.value)} style={inp}/>
+  }</Field>
+}
+
+function DateBox({fecha}) {
+  if (!fecha) return <div style={{minWidth:52,height:62}}/>
+  const [y,m,day]=fecha.split("-")
+  return <div style={{minWidth:52,textAlign:"center",borderRadius:8,flexShrink:0,background:TEAL_L,borderTop:`3px solid ${TEAL}`,padding:"8px 6px"}}>
+    <div style={{fontSize:24,fontWeight:700,color:TEAL,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{parseInt(day)}</div>
+    <div style={{fontSize:10,color:TEAL+"99",textTransform:"uppercase",fontWeight:700,letterSpacing:"0.06em"}}>{MONTHS[parseInt(m)-1]}</div>
+    <div style={{fontSize:9,color:"#AAA"}}>{y}</div>
+  </div>
+}
+
+// ── ICON BUTTONS ──────────────────────────────────────────────────────────────
+function IconBtn({onClick,title,color,children}) {
+  return <button onClick={onClick} title={title} style={{background:"none",border:"none",cursor:"pointer",color:color||"#BBB",padding:"5px 6px",fontSize:13,lineHeight:1,flexShrink:0,borderRadius:4,fontFamily:"inherit",display:"inline-flex",alignItems:"center"}}>{children}</button>
+}
+
+// ── RECORD ACTIONS (edit + delete) ───────────────────────────────────────────
+function RecordActions({onEdit,onDelete,abs}) {
+  return <div style={{display:"flex",gap:2,flexShrink:0,position:abs?"absolute":undefined,top:abs?10:undefined,right:abs?10:undefined}}>
+    <IconBtn onClick={onEdit} title="Editar" color={TEAL}>✎</IconBtn>
+    <IconBtn onClick={onDelete} title="Eliminar" color="#CCC">✕</IconBtn>
+  </div>
+}
+
+// ── ADD/EDIT MODAL ────────────────────────────────────────────────────────────
+function EntryModal({type, initial, onSave, onClose}) {
+  const [fd, setFd] = useState(initial || {})
+  const sf = (k,v) => setFd(f=>({...f,[k]:v}))
+  const isEdit = !!initial?.id
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(10,30,30,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:16}}>
+      <div style={{background:WHITE,borderRadius:12,padding:28,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:4,height:22,background:isEdit?GOLD:TEAL,borderRadius:2}}/>
+            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:TEXT,margin:0}}>
+              {isEdit?"Editar":"Nueva"} {type==="cal"&&"actividad"}{type==="lab"&&"laboratorio"}{type==="pub"&&"publicación"}{type==="conv"&&"convocatoria"}
+            </h3>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#AAA",fontSize:20,lineHeight:1,padding:4}}>✕</button>
+        </div>
+
+        {type==="cal" && <>
+          <Inp k="titulo"      label="Título"         fd={fd} sf={sf}/>
+          <Inp k="fecha"       label="Fecha"          type="date" fd={fd} sf={sf}/>
+          <Inp k="horario"     label="Horario"        fd={fd} sf={sf}/>
+          <Inp k="tipo"        label="Tipo"           opts={["Ponencia","Panel","Seminario","Charla","Webinar","Lanzamiento"]} fd={fd} sf={sf}/>
+          <Inp k="ponente"     label="Ponente/s"      fd={fd} sf={sf}/>
+          <Inp k="moderador"   label="Moderador"      fd={fd} sf={sf}/>
+          <Inp k="link"        label="Link Zoom"      fd={fd} sf={sf}/>
+          <Inp k="estado"      label="Estado"         opts={["Confirmado","En preparación","Propuesto","Realizado","Cancelado"]} fd={fd} sf={sf}/>
+          <Inp k="laboratorio" label="Laboratorio (opcional)" fd={fd} sf={sf}/>
+        </>}
+
+        {type==="lab" && <>
+          <Inp k="nombre"          label="Nombre del laboratorio"      fd={fd} sf={sf}/>
+          <Inp k="area"            label="Área temática"               opts={["Ética","Política","Economía","Filosofía","Interdisciplinar"]} fd={fd} sf={sf}/>
+          <Inp k="director"        label="Director del laboratorio"    fd={fd} sf={sf}/>
+          <Inp k="investigadores"  label="Investigadores actuales (separar por comas)" fd={fd} sf={sf}/>
+          <Inp k="objetivos"       label="Objetivos del laboratorio"   type="textarea" fd={fd} sf={sf}/>
+          <Inp k="temas"           label="Temas de investigación (separar por comas)" fd={fd} sf={sf}/>
+          <Inp k="estado"          label="Estado"                      opts={["Activo","En formación","En pausa"]} fd={fd} sf={sf}/>
+        </>}
+
+        {type==="pub" && <>
+          <Inp k="titulo"      label="Título"              fd={fd} sf={sf}/>
+          <Inp k="tipo"        label="Tipo"                opts={["Artículo de revista","Capítulo de libro","Libro","Working paper","Ponencia publicada","Informe"]} fd={fd} sf={sf}/>
+          <Inp k="autores"     label="Autor/es"            fd={fd} sf={sf}/>
+          <Inp k="laboratorio" label="Laboratorio"         fd={fd} sf={sf}/>
+          <Inp k="fecha"       label="Fecha publicación"   type="date" fd={fd} sf={sf}/>
+          <Inp k="revista"     label="Revista / Editorial" fd={fd} sf={sf}/>
+          <Inp k="link"        label="Link o DOI"          fd={fd} sf={sf}/>
+          <Inp k="resumen"     label="Resumen"             type="textarea" fd={fd} sf={sf}/>
+        </>}
+
+        {type==="conv" && <>
+          <Inp k="nombre"      label="Nombre de la convocatoria" fd={fd} sf={sf}/>
+          <Inp k="tipo"        label="Tipo"        opts={["Revista científica","Capítulo de libro","Congreso","Libro colectivo","Premio"]} fd={fd} sf={sf}/>
+          <Inp k="area"        label="Área temática"    fd={fd} sf={sf}/>
+          <Inp k="editorial"   label="Editorial / Org." fd={fd} sf={sf}/>
+          <Inp k="fechaLimite" label="Fecha límite"     type="date" fd={fd} sf={sf}/>
+          <Inp k="estado"      label="Estado"           opts={["Abierta","Próximamente","Cerrada"]} fd={fd} sf={sf}/>
+          <Inp k="laboratorio" label="Laboratorio relevante" fd={fd} sf={sf}/>
+          <Inp k="link"        label="Link"             fd={fd} sf={sf}/>
+          <Inp k="descripcion" label="Descripción"      type="textarea" fd={fd} sf={sf}/>
+        </>}
+
+        <button onClick={()=>onSave(fd)} style={{width:"100%",background:isEdit?GOLD:TEAL,color:WHITE,border:"none",padding:"12px 20px",borderRadius:7,cursor:"pointer",fontSize:14,fontWeight:600,fontFamily:"inherit",marginTop:8,boxShadow:`0 2px 12px ${isEdit?GOLD:TEAL}55`}}>
+          {isEdit?"Guardar cambios":"Agregar"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── JOIN FORM ─────────────────────────────────────────────────────────────────
+function JoinModal({lab, onClose, onSend}) {
+  const [fd, setFd] = useState({nombre:"",email:"",institucion:"",motivacion:""})
+  const sf = (k,v) => setFd(f=>({...f,[k]:v}))
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(10,30,30,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}}>
+      <div style={{background:WHITE,borderRadius:12,padding:28,width:"100%",maxWidth:480,boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
+        <div style={{borderLeft:`4px solid ${GOLD}`,paddingLeft:14,marginBottom:20}}>
+          <div style={{fontSize:10,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:3}}>Solicitud de adhesión</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,lineHeight:1.3}}>{lab.nombre}</div>
+        </div>
+        <Field label="Nombre completo"><input value={fd.nombre} onChange={e=>sf("nombre",e.target.value)} style={inp}/></Field>
+        <Field label="Correo electrónico"><input type="email" value={fd.email} onChange={e=>sf("email",e.target.value)} style={inp}/></Field>
+        <Field label="Institución"><input value={fd.institucion} onChange={e=>sf("institucion",e.target.value)} style={inp}/></Field>
+        <Field label="Motivación / línea de investigación afín"><textarea value={fd.motivacion} onChange={e=>sf("motivacion",e.target.value)} rows={3} style={{...inp,resize:"vertical"}}/></Field>
+        <div style={{display:"flex",gap:10,marginTop:8}}>
+          <button onClick={onClose} style={{flex:1,padding:"10px",border:`1px solid ${BORDER}`,borderRadius:7,background:"transparent",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:MUTED}}>Cancelar</button>
+          <button onClick={()=>{if(fd.nombre&&fd.email){onSend({...fd,laboratorio:lab.nombre,timestamp:new Date().toISOString()});onClose()}}} style={{flex:2,padding:"10px",border:"none",borderRadius:7,background:TEAL,color:WHITE,cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit"}}>Enviar solicitud</button>
+        </div>
+        <p style={{fontSize:11,color:"#BCC8C8",textAlign:"center",marginTop:12,marginBottom:0,fontStyle:"italic"}}>La Coordinación Académica responderá a la brevedad.</p>
+      </div>
+    </div>
+  )
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+const TABS = [
+  {id:"cal",  label:"Calendario",    sub:"Actividades académicas"},
+  {id:"lab",  label:"Laboratorios",  sub:"Grupos de investigación"},
+  {id:"pub",  label:"Repositorio",   sub:"Publicaciones"},
+  {id:"conv", label:"Convocatorias", sub:"Oportunidades abiertas"},
+]
+
+const INIT_ACTS = [{id:1,titulo:"Quinto centenario de la Escuela de Salamanca y las raíces cristianas del libre mercado",fecha:"2026-04-09",horario:"13:30 hs (Chile)",tipo:"Ponencia",ponente:"Dra. C. Inés Farfán Ulloa",moderador:"José Pablo Pérez Rabasa",estado:"Confirmado",link:"https://lnkd.in/gntATh6B",laboratorio:""}]
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [tab,setTab]         = useState("cal")
+  const [acts,setActs]       = useState(INIT_ACTS)
+  const [labs,setLabs]       = useState([])
+  const [pubs,setPubs]       = useState([])
+  const [convs,setConvs]     = useState([])
+  const [solicitudes,setSol] = useState([])
+  const [modal,setModal]     = useState(null)   // {type, item|null}
+  const [joinLab,setJoinLab] = useState(null)
+  const [toast,setToast]     = useState(null)
+
+  useEffect(()=>{loadAll()},[])
+
+  async function loadAll() {
+    const load = async(k,s,d)=>{try{const r=await window.storage.get(k);s(JSON.parse(r.value))}catch{s(d)}}
+    await load("ca4",setActs,INIT_ACTS)
+    await load("cl4",setLabs,[])
+    await load("cp4",setPubs,[])
+    await load("cc4",setConvs,[])
+    await load("cs4",setSol,[])
+  }
+
+  const save = async(k,d)=>{try{await window.storage.set(k,JSON.stringify(d))}catch{}}
+
+  function notify(msg) { setToast(msg); setTimeout(()=>setToast(null),3500) }
+
+  // ── CRUD helpers ──
+  function upsert(col,setter,key,item) {
+    const exists = col.find(x=>x.id===item.id)
+    const n = exists ? col.map(x=>x.id===item.id?item:x) : [...col,{...item,id:Date.now()}]
+    setter(n); save(key,n)
+  }
+  function del(id,col,setter,key) { const n=col.filter(x=>x.id!==id); setter(n); save(key,n) }
+
+  function handleSave(data) {
+    if (modal.type==="cal")  upsert(acts,setActs,"ca4",data)
+    if (modal.type==="lab")  upsert(labs,setLabs,"cl4",data)
+    if (modal.type==="pub")  upsert(pubs,setPubs,"cp4",data)
+    if (modal.type==="conv") upsert(convs,setConvs,"cc4",data)
+    setModal(null)
+    notify(data.id ? "Registro actualizado." : "Registro guardado.")
+  }
+
+  function handleJoin(data) {
+    const n=[...solicitudes,data]; setSol(n); save("cs4",n)
+    notify(`Solicitud enviada al laboratorio "${data.laboratorio}". La Coordinación responderá a la brevedad.`)
+  }
+
+  const openAdd  = () => setModal({type:tab, item:null})
+  const openEdit = (item) => setModal({type:tab, item})
+
+  const counts = {cal:acts.length,lab:labs.length,pub:pubs.length,conv:convs.length}
+  const cur    = TABS.find(t=>t.id===tab)
+
+  return (
+    <div style={{fontFamily:"'DM Sans',system-ui,sans-serif",minHeight:"100vh",background:OFF_W}}>
+
+      {/* TOAST */}
+      {toast && <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:TEAL_D,color:WHITE,padding:"12px 22px",borderRadius:8,fontSize:13,boxShadow:"0 8px 32px rgba(0,0,0,0.25)",zIndex:2000,maxWidth:420,textAlign:"center",borderLeft:`4px solid ${GOLD}`}}>{toast}</div>}
+
+      {/* HEADER */}
+      <div style={{background:TEAL_D}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 28px 16px"}}>
+          <div>
+            <div style={{display:"flex",alignItems:"baseline",gap:12}}>
+              <span style={{fontFamily:"'Cormorant Garamond',serif",color:WHITE,fontSize:32,fontWeight:600,letterSpacing:"0.06em",lineHeight:1}}>CIEPE</span>
+              <span style={{width:1,height:20,background:"rgba(255,255,255,0.2)",display:"inline-block",marginBottom:2}}/>
+              <span style={{color:GOLD,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:500}}>Hub Académico</span>
+            </div>
+            <div style={{color:"rgba(255,255,255,0.3)",fontSize:10,letterSpacing:"0.1em",textTransform:"uppercase",marginTop:4}}>Ética · Política · Economía</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{textAlign:"right"}}>
+              <div style={{color:"rgba(255,255,255,0.9)",fontSize:12,fontWeight:500,lineHeight:1}}>José Pablo Pérez Rabasa</div>
+              <div style={{color:"rgba(255,255,255,0.35)",fontSize:10,marginTop:3}}>Coordinador Académico</div>
+              {solicitudes.length>0 && <div style={{fontSize:10,color:GOLD,marginTop:3,fontWeight:600}}>{solicitudes.length} solicitud{solicitudes.length>1?"es":""} pendiente{solicitudes.length>1?"s":""}</div>}
+            </div>
+            <div style={{width:38,height:38,borderRadius:"50%",background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:TEAL_D,flexShrink:0}}>JP</div>
+          </div>
+        </div>
+        <div style={{display:"flex",padding:"0 18px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{background:"transparent",border:"none",cursor:"pointer",padding:"12px 18px",fontFamily:"inherit",fontSize:13,fontWeight:500,color:tab===t.id?WHITE:"rgba(255,255,255,0.4)",borderBottom:tab===t.id?`2px solid ${GOLD}`:"2px solid transparent",display:"flex",alignItems:"center",gap:7,whiteSpace:"nowrap",transition:"color 0.15s"}}>
+              {t.label}
+              {counts[t.id]>0&&<span style={{background:tab===t.id?GOLD+"33":"rgba(255,255,255,0.1)",color:tab===t.id?GOLD:"rgba(255,255,255,0.35)",borderRadius:10,padding:"1px 7px",fontSize:10,fontWeight:700}}>{counts[t.id]}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{maxWidth:900,margin:"0 auto",padding:"26px 20px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+          <div>
+            <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,color:TEXT,margin:0}}>{cur?.label}</h2>
+            <p style={{color:MUTED,fontSize:12,margin:"5px 0 0",fontStyle:"italic"}}>{cur?.sub}</p>
+          </div>
+          <button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:7,background:TEAL,color:WHITE,border:"none",borderRadius:7,padding:"9px 20px",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",boxShadow:`0 2px 10px ${TEAL}55`}}>
+            <span style={{fontSize:16,lineHeight:1}}>+</span> Agregar
+          </button>
+        </div>
+
+        {/* ── CALENDARIO ── */}
+        {tab==="cal" && <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {acts.length===0 && <Empty msg="No hay actividades programadas aún."/>}
+          {[...acts].sort((a,b)=>(a.fecha||"9")>(b.fecha||"9")?1:-1).map(a=>(
+            <div key={a.id} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,display:"flex",gap:16,padding:"16px 20px",alignItems:"flex-start"}}>
+              <DateBox fecha={a.fecha}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                  {a.tipo&&<TipoBadge text={a.tipo}/>}{a.estado&&<Badge text={a.estado}/>}
+                </div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,color:TEXT,lineHeight:1.4,marginBottom:10}}>{a.titulo}</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px"}}>
+                  {a.horario   &&<MetaRow icon="🕐" text={a.horario}/>}
+                  {a.ponente   &&<MetaRow icon="🎙" text={a.ponente}/>}
+                  {a.moderador &&<MetaRow icon="👤" text={"Mod: "+a.moderador}/>}
+                  {a.laboratorio&&<MetaRow icon="🔬" text={a.laboratorio} accent/>}
+                </div>
+                {a.link&&<a href={a.link} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:10,fontSize:11,fontWeight:600,color:TEAL,textDecoration:"none",padding:"4px 10px",borderRadius:4,background:TEAL_L}}>🔗 Acceder al Zoom</a>}
+              </div>
+              <RecordActions onEdit={()=>openEdit(a)} onDelete={()=>del(a.id,acts,setActs,"ca4")}/>
+            </div>
+          ))}
+        </div>}
+
+        {/* ── LABORATORIOS ── */}
+        {tab==="lab" && <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {labs.length===0 && <Empty msg="Los laboratorios se cargarán en cuanto estén confirmados por la Dirección."/>}
+          {labs.map(l=>(
+            <div key={l.id} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,overflow:"hidden",position:"relative"}}>
+              <RecordActions onEdit={()=>openEdit(l)} onDelete={()=>del(l.id,labs,setLabs,"cl4")} abs/>
+              <div style={{borderLeft:`5px solid ${TEAL}`,padding:"18px 24px 14px",background:`linear-gradient(to right,${TEAL_L},${WHITE})`}}>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:GOLD,marginBottom:6}}>{l.area||"Interdisciplinar"}</div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:TEXT,lineHeight:1.25,paddingRight:60,marginBottom:10}}>{l.nombre}</div>
+                {l.director&&<div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:TEAL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:WHITE,flexShrink:0}}>{l.director.split(" ").slice(-1)[0]?.slice(0,2).toUpperCase()}</div>
+                  <div><div style={{fontSize:12,fontWeight:600,color:TEAL}}>{l.director}</div><div style={{fontSize:10,color:MUTED}}>Director del Laboratorio</div></div>
+                </div>}
+              </div>
+              <div style={{padding:"14px 24px 18px"}}>
+                {l.objetivos&&<div style={{marginBottom:14}}>
+                  <div style={{fontSize:10,fontWeight:700,color:MUTED,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Objetivos</div>
+                  <div style={{fontSize:13,color:"#444",lineHeight:1.65}}>{l.objetivos}</div>
+                </div>}
+                {l.temas&&<div style={{marginBottom:14}}>
+                  <div style={{fontSize:10,fontWeight:700,color:MUTED,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:6}}>Temas de investigación</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {l.temas.split(",").map((t,i)=><span key={i} style={{padding:"3px 10px",borderRadius:20,fontSize:11,background:TEAL_L,color:TEAL,fontWeight:500,border:`1px solid ${TEAL}22`}}>{t.trim()}</span>)}
+                  </div>
+                </div>}
+                {l.investigadores&&<div style={{marginBottom:14}}>
+                  <div style={{fontSize:10,fontWeight:700,color:MUTED,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Investigadores actuales</div>
+                  <div style={{fontSize:12,color:"#555",fontStyle:"italic",lineHeight:1.5}}>{l.investigadores}</div>
+                </div>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${BORDER}`,paddingTop:12,marginTop:4}}>
+                  {l.estado&&<Badge text={l.estado}/>}
+                  <button onClick={()=>setJoinLab(l)} style={{display:"flex",alignItems:"center",gap:6,background:GOLD_L,color:GOLD,border:`1px solid ${GOLD}44`,borderRadius:6,padding:"7px 16px",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>✚ Solicitar adhesión</button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {solicitudes.length>0&&<div style={{marginTop:8,background:GOLD_L,borderRadius:10,border:`1px solid ${GOLD}44`,padding:"16px 20px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}}>Solicitudes de adhesión pendientes ({solicitudes.length})</div>
+            {solicitudes.map((s,i)=><div key={i} style={{fontSize:12,color:TEXT,padding:"8px 0",borderBottom:i<solicitudes.length-1?`1px solid ${GOLD}22`:"none"}}>
+              <strong>{s.nombre}</strong> — {s.email} · {s.laboratorio}
+              {s.motivacion&&<div style={{color:MUTED,marginTop:2,fontStyle:"italic"}}>{s.motivacion}</div>}
+            </div>)}
+            <button onClick={()=>{setSol([]);save("cs4",[])}} style={{marginTop:10,fontSize:11,color:MUTED,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>Limpiar lista</button>
+          </div>}
+        </div>}
+
+        {/* ── REPOSITORIO ── */}
+        {tab==="pub" && <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{background:TEAL_L,borderRadius:8,padding:"10px 14px",fontSize:12,color:TEAL,display:"flex",gap:8,alignItems:"center",marginBottom:4,border:`1px solid ${TEAL}22`}}>
+            <span>ℹ️</span><span>En la versión instalable, los investigadores podrán subir sus papers en PDF directamente desde la app.</span>
+          </div>
+          {pubs.length===0&&<Empty msg="El repositorio se irá completando con las publicaciones de los laboratorios."/>}
+          {pubs.map(p=>(
+            <div key={p.id} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 20px",display:"flex",gap:14,alignItems:"flex-start"}}>
+              <div style={{width:44,height:44,borderRadius:8,background:TEAL_L,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📄</div>
+              <div style={{flex:1,minWidth:0}}>
+                {p.tipo&&<span style={{display:"inline-block",marginBottom:5,padding:"2px 7px",borderRadius:3,fontSize:10,fontWeight:600,background:GOLD_L,color:GOLD,letterSpacing:"0.05em",textTransform:"uppercase"}}>{p.tipo}</span>}
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontWeight:600,color:TEXT,lineHeight:1.4,marginBottom:5}}>{p.titulo}</div>
+                <div style={{fontSize:12,color:MUTED,display:"flex",gap:10,flexWrap:"wrap"}}>
+                  {p.autores&&<span>{p.autores}</span>}
+                  {p.revista&&<span>· {p.revista}</span>}
+                  {p.fecha&&<span style={{color:"#AAA"}}>· {fmt(p.fecha)}</span>}
+                </div>
+                {p.laboratorio&&<div style={{fontSize:11,color:TEAL,marginTop:5,fontWeight:500}}>🔬 {p.laboratorio}</div>}
+                {p.resumen&&<div style={{fontSize:12,color:"#555",marginTop:8,lineHeight:1.6,borderTop:`1px solid ${BORDER}`,paddingTop:8}}>{p.resumen}</div>}
+                {p.link&&<a href={p.link} target="_blank" rel="noreferrer" style={{display:"inline-block",marginTop:7,fontSize:11,color:TEAL,textDecoration:"none",fontWeight:600}}>Ver / Descargar →</a>}
+              </div>
+              <RecordActions onEdit={()=>openEdit(p)} onDelete={()=>del(p.id,pubs,setPubs,"cp4")}/>
+            </div>
+          ))}
+        </div>}
+
+        {/* ── CONVOCATORIAS ── */}
+        {tab==="conv" && <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {convs.length===0&&<Empty msg="Circulá oportunidades de publicación para los investigadores de CIEPE."/>}
+          {[...convs].sort((a,b)=>(a.fechaLimite||"9")>(b.fechaLimite||"9")?1:-1).map(c=>{
+            const days=daysLeft(c.fechaLimite); const urgent=days!==null&&days<=14&&days>=0
+            return <div key={c.id} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,borderLeft:urgent?`4px solid ${GOLD}`:`1px solid ${BORDER}`,padding:"16px 20px",display:"flex",gap:16,alignItems:"flex-start"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                  {c.tipo&&<TipoBadge text={c.tipo}/>}{c.estado&&<Badge text={c.estado}/>}
+                  {urgent&&<span style={{padding:"2px 7px",borderRadius:3,fontSize:10,fontWeight:700,background:GOLD_L,color:GOLD,letterSpacing:"0.05em",textTransform:"uppercase"}}>¡Urgente!</span>}
+                </div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,color:TEXT,lineHeight:1.4,marginBottom:8}}>{c.nombre}</div>
+                <div style={{fontSize:12,color:MUTED,display:"flex",flexWrap:"wrap",gap:"4px 14px"}}>
+                  {c.editorial&&<MetaRow icon="🏛" text={c.editorial}/>}
+                  {c.area&&<MetaRow icon="📌" text={c.area}/>}
+                  {c.laboratorio&&<MetaRow icon="🔬" text={c.laboratorio} accent/>}
+                </div>
+                {c.descripcion&&<div style={{fontSize:12,color:"#555",marginTop:9,lineHeight:1.6,borderTop:`1px solid ${BORDER}`,paddingTop:9}}>{c.descripcion}</div>}
+                {c.link&&<a href={c.link} target="_blank" rel="noreferrer" style={{display:"inline-block",marginTop:8,fontSize:11,color:TEAL,textDecoration:"none",fontWeight:600}}>Ver convocatoria →</a>}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
+                {c.fechaLimite&&days!==null&&<div style={{textAlign:"center"}}>
+                  <div style={{background:urgent?GOLD_L:TEAL_L,borderRadius:8,padding:"10px 14px",minWidth:54}}>
+                    <div style={{fontSize:26,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:urgent?GOLD:TEAL,lineHeight:1}}>{Math.max(0,days)}</div>
+                    <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700,color:urgent?GOLD+"99":TEAL+"99",marginTop:2}}>{days<=0?"vencida":"días"}</div>
+                    <div style={{fontSize:9,color:"#CCC",marginTop:4}}>{fmt(c.fechaLimite)}</div>
+                  </div>
+                </div>}
+                <RecordActions onEdit={()=>openEdit(c)} onDelete={()=>del(c.id,convs,setConvs,"cc4")}/>
+              </div>
+            </div>
+          })}
+        </div>}
+      </div>
+
+      {/* FOOTER */}
+      <div style={{textAlign:"center",padding:"24px 20px 32px",borderTop:`1px solid ${BORDER}`,marginTop:20}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",color:"#BBC8C8",fontSize:16,letterSpacing:"0.12em",marginBottom:4}}>CIEPE</div>
+        <div style={{fontSize:10,color:"#C8D0D0",letterSpacing:"0.08em",textTransform:"uppercase"}}>Centro Interdisciplinario en Ética, Política y Economía</div>
+      </div>
+
+      {/* MODALS */}
+      {modal && <EntryModal type={modal.type} initial={modal.item} onSave={handleSave} onClose={()=>setModal(null)}/>}
+      {joinLab && <JoinModal lab={joinLab} onClose={()=>setJoinLab(null)} onSend={handleJoin}/>}
+    </div>
+  )
+}
+
+function Empty({msg}) {
+  return <div style={{textAlign:"center",padding:"52px 24px",color:"#BCC8C8",fontSize:13,fontStyle:"italic",lineHeight:1.7}}>{msg}</div>
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
