@@ -444,24 +444,27 @@ function Empty({msg}) {
 
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const root = ReactDOM.createRoot(document.getElementById("root"));
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyB3UnTPdojbnChToQqvL2OOdqbz3v5e-4g",
-      authDomain: "ciepe---hub.firebaseapp.com",
-      projectId: "ciepe---hub",
-      storageBucket: "ciepe---hub.firebasestorage.app",
-      messagingSenderId: "622358314474",
-      appId: "1:622358314474:web:33b12436b9599a812b8693"
-    };
+  // Configuración de Firebase compatible con el código de Claude
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3UnTPdojbnChToQqvL2OOdqbz3v5e-4g",
+    authDomain: "ciepe---hub.firebaseapp.com",
+    projectId: "ciepe---hub",
+    storageBucket: "ciepe---hub.firebasestorage.app",
+    messagingSenderId: "622358314474",
+    appId: "1:622358314474:web:33b12436b9599a812b8693"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    window.auth = getAuth(app);
-    window.db = getFirestore(app);
-  </script>
+  // Inicialización global
+  if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+  }
+  window.auth = firebase.auth();
+  window.db = firebase.firestore();
+
+  root.render(<App/>);
+</script>
 </body>
 </html>
+
