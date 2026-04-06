@@ -437,16 +437,9 @@ function App() {
     </div>
   )
 }
-
-function Empty({msg}) {
-  return <div style={{textAlign:"center",padding:"52px 24px",color:"#BCC8C8",fontSize:13,fontStyle:"italic",lineHeight:1.7}}>{msg}</div>
-}
-
-
 const root = ReactDOM.createRoot(document.getElementById("root"));
-const root = ReactDOM.createRoot(document.getElementById("root"));
-
-  // Configuración de Firebase compatible con el código de Claude
+  
+  // Configuración de Firebase (Tus credenciales)
   const firebaseConfig = {
     apiKey: "AIzaSyB3UnTPdojbnChToQqvL2OOdqbz3v5e-4g",
     authDomain: "ciepe---hub.firebaseapp.com",
@@ -456,15 +449,12 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
     appId: "1:622358314474:web:33b12436b9599a812b8693"
   };
 
-  // Inicialización global
+  // Inicialización (Formato estándar compatible con Claude)
   if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
   }
-  window.auth = firebase.auth();
-  window.db = firebase.firestore();
 
-  root.render(<App/>);
+  root.render(<App />);
 </script>
 </body>
 </html>
-
