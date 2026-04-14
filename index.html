@@ -517,7 +517,7 @@ function MainApp({profile,onLogout}) {
             <p style={{color:MUTED,fontSize:12,margin:"4px 0 0",fontStyle:"italic"}}>
               {cur?.sub}</p>
           </div>
-          {(isAdmin || tab==="pub") && (
+          {(isAdmin || tab==="pub") && tab !== "dash" && (
             <button onClick={()=>setModal({type:tab,item:null})} style={{
               display:"flex",alignItems:"center",gap:7,background:TEAL,
               color:WHITE,border:"none",borderRadius:7,padding:"9px 18px",
@@ -544,7 +544,7 @@ function MainApp({profile,onLogout}) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
             {[
               {label:"Laboratorios activos", value:8,           color:TEAL,     icon:"🔬"},
-              {label:"Actividades 2026",     value:acts.length, color:"#2E7D52", icon:"📅"},
+              {label:"Total actividades",     value:acts.length, color:"#2E7D52", icon:"📅"},
               {label:"Publicaciones",        value:pubs.length, color:"#5B4A8A", icon:"📄"},
               {label:"Convocatorias abiertas",value:convs.filter(c=>c.estado==="Abierta").length, color:GOLD, icon:"📢"},
             ].map((m,i)=>(
@@ -606,6 +606,34 @@ function MainApp({profile,onLogout}) {
             ))}
           </div>}
 
+          {pubs.length > 0 && <div style={{marginTop:20}}>
+            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,marginBottom:14}}>Últimas publicaciones</h3>
+            {[...pubs].slice(-3).reverse().map((p,i)=>(
+              <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"12px 16px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
+                <div style={{width:36,height:36,borderRadius:6,background:TEAL_L,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>📄</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontWeight:600,color:TEXT,lineHeight:1.3}}>{p.titulo}</div>
+                  <div style={{fontSize:11,color:MUTED,marginTop:3}}>{p.autores}{p.revista ? " · " + p.revista : ""}</div>
+                  {p.laboratorio && <div style={{fontSize:10,color:TEAL,marginTop:2,fontWeight:600}}>🔬 {p.laboratorio}</div>}
+                </div>
+                {p.link && <a href={p.link} target="_blank" rel="noreferrer" style={{fontSize:11,color:TEAL,fontWeight:600,textDecoration:"none",flexShrink:0}}>Ver →</a>}
+              </div>
+            ))}
+          </div>}
+
+          {acts.filter(a=>a.fecha>=new Date().toISOString().slice(0,10)&&a.estado!=="Cancelado").length > 1 && <div style={{marginTop:20}}>
+            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,marginBottom:14}}>Próximas actividades</h3>
+            {[...acts].filter(a=>a.fecha>=new Date().toISOString().slice(0,10)&&a.estado!=="Cancelado").sort((a,b)=>a.fecha>b.fecha?1:-1).slice(0,4).map((a,i)=>(
+              <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:500,color:TEXT,lineHeight:1.3}}>{a.titulo}</div>
+                  <div style={{fontSize:11,color:MUTED,marginTop:2}}>{fmt(a.fecha)}{a.horario?" · "+a.horario:""}</div>
+                </div>
+                {a.tipo&&<TipoBadge t={a.tipo}/>}
+              </div>
+            ))}
+          </div>}
+
           <div style={{textAlign:"center",padding:"24px 0 8px",borderTop:`1px solid ${BORDER}`,marginTop:24}}>
             <div style={{fontSize:11,color:MUTED,lineHeight:1.8}}>
               CIEPE · Centro Interdisciplinario en Ética, Política y Economía<br/>
@@ -617,7 +645,12 @@ function MainApp({profile,onLogout}) {
         {/* CALENDARIO */}
         {tab==="cal" && <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {acts.length===0 && <Empty msg="No hay actividades programadas aún."/>}
-          {acts.map(a=>(
+          {isAdmin && acts.filter(a=>a.estado==="Realizado").length>0 && (
+            <div style={{fontSize:11,color:MUTED,background:TEAL_L,borderRadius:6,padding:"6px 12px",display:"flex",alignItems:"center",gap:6}}>
+              <span>📋</span> Hay {acts.filter(a=>a.estado==="Realizado").length} actividad(es) realizadas en el historial. Los miembros no las ven; vos sí como administrador.
+            </div>
+          )}
+          {acts.filter(a => isAdmin || a.estado !== "Realizado").map(a=>(
             <div key={a.id} style={{background:WHITE,borderRadius:10,
               border:`1px solid ${BORDER}`,display:"flex",gap:16,
               padding:"16px 20px",alignItems:"flex-start"}}>
