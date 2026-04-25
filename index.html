@@ -23,6 +23,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
 <script type="text/babel">
 // Firebase se inicializa aqui adentro para garantizar que
@@ -534,117 +535,7 @@ function MainApp({profile,onLogout}) {
         </div>
 
         {/* PANEL CIEPE — DASHBOARD */}
-        {tab==="dash" && <div>
-          <div style={{background:TEAL_D,borderRadius:10,padding:"20px 24px",marginBottom:20,color:WHITE}}>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6}}>
-              Centro Interdisciplinario en Ética, Política y Economía
-            </div>
-            <div style={{fontSize:13,color:"rgba(255,255,255,0.6)",lineHeight:1.7}}>
-              Red interdisciplinaria de investigadores que trabaja en la intersección de la ética, la política y la economía.
-              Organizados en 8 Laboratorios de Pensamiento activos, con presencia académica internacional.
-            </div>
-          </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
-            {[
-              {label:"Laboratorios activos", value:8,           color:TEAL,     icon:"🔬"},
-              {label:"Total actividades",     value:acts.length, color:"#2E7D52", icon:"📅"},
-              {label:"Publicaciones",        value:pubs.length, color:"#5B4A8A", icon:"📄"},
-              {label:"Convocatorias abiertas",value:convs.filter(c=>c.estado==="Abierta").length, color:GOLD, icon:"📢"},
-            ].map((m,i)=>(
-              <div key={i} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"16px 18px",borderTop:`3px solid ${m.color}`}}>
-                <div style={{fontSize:20,marginBottom:6}}>{m.icon}</div>
-                <div style={{fontSize:28,fontWeight:700,color:m.color,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{m.value}</div>
-                <div style={{fontSize:10,color:MUTED,marginTop:4,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600,lineHeight:1.3}}>{m.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {acts.filter(a=>a.fecha>=new Date().toISOString().slice(0,10)).sort((a,b)=>a.fecha>b.fecha?1:-1)[0] && (()=>{
-            const next=acts.filter(a=>a.fecha>=new Date().toISOString().slice(0,10)).sort((a,b)=>a.fecha>b.fecha?1:-1)[0];
-            return <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,borderLeft:`5px solid ${TEAL}`,padding:"18px 22px",marginBottom:20}}>
-              <div style={{fontSize:10,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>Próxima actividad</div>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:8}}>{next.titulo}</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:MUTED}}>
-                {next.fecha&&<MetaRow icon="📅" text={fmt(next.fecha)}/>}
-                {next.horario&&<MetaRow icon="🕐" text={next.horario}/>}
-                {next.ponente&&<MetaRow icon="🎙" text={next.ponente}/>}
-              </div>
-              {next.link&&<a href={next.link} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:10,fontSize:11,fontWeight:600,color:TEAL,textDecoration:"none",padding:"4px 10px",borderRadius:4,background:TEAL_L}}>🔗 Acceder</a>}
-            </div>;
-          })()}
-
-          <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,marginBottom:14}}>Laboratorios de Pensamiento</h3>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10,marginBottom:20}}>
-            {[
-              {nombre:"Bioética aplicada y retos del siglo XXI",director:"Pía Poulet Bustamante Barahona",area:"Interdisciplinar"},
-              {nombre:"Crimen, comunicación y percepción pública",director:"Paulina Andrea Gallardo Gómez",area:"Interdisciplinar"},
-              {nombre:"Educación, liderazgo y justicia social",director:"Johanna Solange Godoy Cerda",area:"Interdisciplinar"},
-              {nombre:"Filosofía del riesgo y justicia epistémica",director:"Max Reyes Lobos",area:"Interdisciplinar"},
-              {nombre:"Filosofía, ética y educación en ciencias",director:"Eduardo Andrés Martín Sanabria",area:"Interdisciplinar"},
-              {nombre:"Inteligencia artificial, derecho y filosofía",director:"Pablo Ruiz Osuna / Isaac Carbajal",area:"Interdisciplinar"},
-              {nombre:"Métodos experimentales para mercados e instituciones",director:"Christopher Douglas Acuña Martínez",area:"Economía"},
-              {nombre:"Ética y conocimiento",director:"Felipe Alejandro Álvarez Osorio",area:"Filosofía"},
-            ].map((l,i)=>(
-              <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"14px 16px",borderTop:`2px solid ${TEAL}`}}>
-                <div style={{fontSize:9,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{l.area}</div>
-                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontWeight:600,color:TEXT,lineHeight:1.35,marginBottom:6}}>{l.nombre}</div>
-                <div style={{fontSize:11,color:TEAL,fontWeight:500}}>👤 {l.director}</div>
-              </div>
-            ))}
-          </div>
-
-          {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).length>0&&<div>
-            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,marginBottom:14}}>Convocatorias próximas a cerrar</h3>
-            {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).map((c,i)=>(
-              <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,borderLeft:`4px solid ${GOLD}`,padding:"12px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:500,color:TEXT}}>{c.nombre}</div>
-                  {c.editorial&&<div style={{fontSize:11,color:MUTED,marginTop:2}}>{c.editorial}</div>}
-                </div>
-                <div style={{textAlign:"center",background:GOLD_L,borderRadius:6,padding:"6px 10px",flexShrink:0,marginLeft:12}}>
-                  <div style={{fontSize:18,fontWeight:700,color:GOLD,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{daysLeft(c.fechaLimite)}</div>
-                  <div style={{fontSize:9,color:GOLD+"99",textTransform:"uppercase",fontWeight:700}}>días</div>
-                </div>
-              </div>
-            ))}
-          </div>}
-
-          {pubs.length > 0 && <div style={{marginTop:20}}>
-            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,marginBottom:14}}>Últimas publicaciones</h3>
-            {[...pubs].slice(-3).reverse().map((p,i)=>(
-              <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"12px 16px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
-                <div style={{width:36,height:36,borderRadius:6,background:TEAL_L,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>📄</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontWeight:600,color:TEXT,lineHeight:1.3}}>{p.titulo}</div>
-                  <div style={{fontSize:11,color:MUTED,marginTop:3}}>{p.autores}{p.revista ? " · " + p.revista : ""}</div>
-                  {p.laboratorio && <div style={{fontSize:10,color:TEAL,marginTop:2,fontWeight:600}}>🔬 {p.laboratorio}</div>}
-                </div>
-                {p.link && <a href={p.link} target="_blank" rel="noreferrer" style={{fontSize:11,color:TEAL,fontWeight:600,textDecoration:"none",flexShrink:0}}>Ver →</a>}
-              </div>
-            ))}
-          </div>}
-
-          {acts.filter(a=>a.fecha>=new Date().toISOString().slice(0,10)&&a.estado!=="Cancelado").length > 1 && <div style={{marginTop:20}}>
-            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:TEXT,marginBottom:14}}>Próximas actividades</h3>
-            {[...acts].filter(a=>a.fecha>=new Date().toISOString().slice(0,10)&&a.estado!=="Cancelado").sort((a,b)=>a.fecha>b.fecha?1:-1).slice(0,4).map((a,i)=>(
-              <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:500,color:TEXT,lineHeight:1.3}}>{a.titulo}</div>
-                  <div style={{fontSize:11,color:MUTED,marginTop:2}}>{fmt(a.fecha)}{a.horario?" · "+a.horario:""}</div>
-                </div>
-                {a.tipo&&<TipoBadge t={a.tipo}/>}
-              </div>
-            ))}
-          </div>}
-
-          <div style={{textAlign:"center",padding:"24px 0 8px",borderTop:`1px solid ${BORDER}`,marginTop:24}}>
-            <div style={{fontSize:11,color:MUTED,lineHeight:1.8}}>
-              CIEPE · Centro Interdisciplinario en Ética, Política y Economía<br/>
-              <span style={{color:"#CCC"}}>8 Laboratorios de Pensamiento · Red internacional de investigadores</span>
-            </div>
-          </div>
-        </div>}
+        {tab==="dash" && <DashboardPanel acts={acts} pubs={pubs} convs={convs} labs={labs}/>}
 
         {/* CALENDARIO */}
         {tab==="cal" && <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -887,6 +778,181 @@ function MainApp({profile,onLogout}) {
 }
 
 // ── RAÍZ ──────────────────────────────────────────────────────────────────────
+
+// ── CHART COMPONENT ─────────────────────────────────────────────────────────
+function ChartBar({data, labels, colors}){
+  const ref = React.useRef(null);
+  const chartRef = React.useRef(null);
+  React.useEffect(()=>{
+    if(!ref.current||!window.Chart) return;
+    if(chartRef.current) chartRef.current.destroy();
+    chartRef.current = new window.Chart(ref.current, {
+      type:"bar",
+      data:{labels, datasets:[{data, backgroundColor:colors||labels.map((_,i)=>[TEAL,GOLD,"#5B4A8A","#2E7D52","#C0392B","#E67E22"][i%6]), borderRadius:4, borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:MUTED,font:{size:10}}},y:{grid:{color:"#F0F0F0"},ticks:{color:MUTED,font:{size:10},precision:0},beginAtZero:true}}}
+    });
+    return()=>{if(chartRef.current)chartRef.current.destroy();};
+  },[JSON.stringify(data),JSON.stringify(labels)]);
+  return <div style={{position:"relative",height:150}}><canvas ref={ref}/></div>;
+}
+
+function ChartDoughnut({data, labels, colors}){
+  const ref = React.useRef(null);
+  const chartRef = React.useRef(null);
+  React.useEffect(()=>{
+    if(!ref.current||!window.Chart) return;
+    if(chartRef.current) chartRef.current.destroy();
+    const total = data.reduce((a,b)=>a+b,0);
+    chartRef.current = new window.Chart(ref.current, {
+      type:"doughnut",
+      data:{labels, datasets:[{data, backgroundColor:colors||[TEAL,GOLD,"#5B4A8A","#2E7D52","#C0392B","#E67E22","#3498DB"], borderWidth:2, borderColor:"#fff", hoverOffset:4}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"bottom",labels:{font:{size:9},padding:6,color:MUTED,boxWidth:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} (${total?Math.round(ctx.parsed/total*100):0}%)`}}}}
+    });
+    return()=>{if(chartRef.current)chartRef.current.destroy();};
+  },[JSON.stringify(data),JSON.stringify(labels)]);
+  return <div style={{position:"relative",height:170}}><canvas ref={ref}/></div>;
+}
+
+// ── DASHBOARD PANEL ──────────────────────────────────────────────────────────
+function DashboardPanel({acts, pubs, convs, labs}){
+  const today = new Date().toISOString().slice(0,10);
+  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const tiposPub = {};
+  pubs.forEach(p=>{const t=p.tipo||"Otro"; tiposPub[t]=(tiposPub[t]||0)+1;});
+  const pubLabels = Object.keys(tiposPub);
+  const pubData   = Object.values(tiposPub);
+  const now = new Date();
+  const actMeses = Array.from({length:6},(_,i)=>{
+    const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
+    return {key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`, label:meses[d.getMonth()]};
+  });
+  const actPorMes = actMeses.map(m=>acts.filter(a=>a.fecha&&a.fecha.startsWith(m.key)).length);
+  const convEstados = {};
+  convs.forEach(c=>{const e=c.estado||"Sin estado"; convEstados[e]=(convEstados[e]||0)+1;});
+  const convLabels = Object.keys(convEstados);
+  const convData   = Object.values(convEstados);
+  const next = [...acts].filter(a=>a.fecha>=today).sort((a,b)=>a.fecha>b.fecha?1:-1)[0];
+
+  return <div>
+    <div style={{background:TEAL_D,borderRadius:10,padding:"20px 24px",marginBottom:20,color:WHITE,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-20,right:-20,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,0.04)"}}/>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6,position:"relative"}}>
+        Centro Interdisciplinario en Ética, Política y Economía
+      </div>
+      <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.7,position:"relative"}}>
+        Red interdisciplinaria organizada en 8 Laboratorios de Pensamiento activos · Presencia académica internacional
+      </div>
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:20}}>
+      {[
+        {label:"Laboratorios", value:labs.length||8, color:TEAL, icon:"🔬", sub:"activos"},
+        {label:"Actividades",  value:acts.length,    color:"#2E7D52", icon:"📅", sub:"registradas"},
+        {label:"Publicaciones",value:pubs.length,    color:"#5B4A8A", icon:"📄", sub:"en el hub"},
+        {label:"Convocatorias",value:convs.filter(c=>c.estado==="Abierta").length, color:GOLD, icon:"📢", sub:"abiertas"},
+        {label:"Realizadas",   value:acts.filter(a=>a.estado==="Realizado").length, color:"#E67E22", icon:"✅", sub:"actividades"},
+      ].map((m,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"12px 14px",borderTop:`3px solid ${m.color}`}}>
+          <div style={{fontSize:16,marginBottom:4}}>{m.icon}</div>
+          <div style={{fontSize:24,fontWeight:700,color:m.color,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{m.value}</div>
+          <div style={{fontSize:9,color:MUTED,marginTop:3,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>{m.label}</div>
+          <div style={{fontSize:8,color:"#BBB",textTransform:"uppercase"}}>{m.sub}</div>
+        </div>
+      ))}
+    </div>
+
+    {next && <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,borderLeft:`5px solid ${TEAL}`,padding:"14px 18px",marginBottom:20}}>
+      <div style={{fontSize:9,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>Próxima actividad</div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:5}}>{next.titulo}</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",fontSize:11,color:MUTED}}>
+        {next.fecha&&<span>📅 {fmt(next.fecha)}</span>}
+        {next.horario&&<span>🕐 {next.horario}</span>}
+        {next.ponente&&<span>🎙 {next.ponente}</span>}
+      </div>
+      {next.link&&<a href={next.link} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:8,fontSize:11,fontWeight:600,color:TEAL,textDecoration:"none",padding:"3px 8px",borderRadius:4,background:TEAL_L}}>🔗 Acceder</a>}
+    </div>}
+
+    <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Analítica institucional</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,marginBottom:20}}>
+      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
+        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📅 Actividades por mes (últimos 6 meses)</div>
+        {acts.length>0
+          ?<ChartBar data={actPorMes} labels={actMeses.map(m=>m.label)} colors={actMeses.map(()=>TEAL)}/>
+          :<div style={{height:150,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin datos aún — se llenará automáticamente</div>}
+      </div>
+      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
+        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📄 Publicaciones por tipo</div>
+        {pubs.length>0
+          ?<ChartDoughnut data={pubData} labels={pubLabels}/>
+          :<div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin publicaciones aún</div>}
+      </div>
+      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
+        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📢 Convocatorias por estado</div>
+        {convs.length>0
+          ?<ChartDoughnut data={convData} labels={convLabels} colors={[TEAL,"#2E7D52",GOLD,"#C0392B","#AAA"]}/>
+          :<div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin convocatorias aún</div>}
+      </div>
+    </div>
+
+    <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Laboratorios de Pensamiento</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10,marginBottom:20}}>
+      {(labs.length>0?labs:[
+        {nombre:"Bioética aplicada y retos del siglo XXI",director:"Pía Poulet Bustamante Barahona",area:"Interdisciplinar"},
+        {nombre:"Crimen, comunicación y percepción pública",director:"Paulina Andrea Gallardo Gómez",area:"Interdisciplinar"},
+        {nombre:"Educación, liderazgo y justicia social",director:"Johanna Solange Godoy Cerda",area:"Interdisciplinar"},
+        {nombre:"Filosofía del riesgo y justicia epistémica",director:"Max Reyes Lobos",area:"Interdisciplinar"},
+        {nombre:"Filosofía, ética y educación en ciencias",director:"Eduardo Andrés Martín Sanabria",area:"Interdisciplinar"},
+        {nombre:"Inteligencia artificial, derecho y filosofía",director:"Pablo Ruiz Osuna / Isaac Carbajal",area:"Interdisciplinar"},
+        {nombre:"Métodos experimentales para mercados e instituciones",director:"Christopher Douglas Acuña Martínez",area:"Economía"},
+        {nombre:"Ética y conocimiento",director:"Felipe Alejandro Álvarez Osorio",area:"Filosofía"},
+      ]).map((l,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"11px 14px",borderTop:`2px solid ${TEAL}`}}>
+          <div style={{fontSize:8,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{l.area||"Interdisciplinar"}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:12,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:3}}>{l.nombre}</div>
+          <div style={{fontSize:10,color:TEAL,fontWeight:500}}>👤 {l.director}</div>
+        </div>
+      ))}
+    </div>
+
+    {pubs.length>0&&<div style={{marginBottom:20}}>
+      <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Últimas publicaciones</h3>
+      {[...pubs].slice(-3).reverse().map((p,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"10px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
+          <div style={{width:30,height:30,borderRadius:5,background:TEAL_L,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>📄</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontWeight:600,color:TEXT,lineHeight:1.3}}>{p.titulo}</div>
+            <div style={{fontSize:10,color:MUTED,marginTop:2}}>{p.autores}{p.revista?" · "+p.revista:""}</div>
+          </div>
+          {p.link&&<a href={p.link} target="_blank" rel="noreferrer" style={{fontSize:10,color:TEAL,fontWeight:600,textDecoration:"none",flexShrink:0}}>Ver →</a>}
+        </div>
+      ))}
+    </div>}
+
+    {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).length>0&&<div style={{marginBottom:20}}>
+      <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Convocatorias próximas a cerrar</h3>
+      {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).map((c,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,borderLeft:`4px solid ${GOLD}`,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:12,fontWeight:500,color:TEXT}}>{c.nombre}</div>
+            {c.editorial&&<div style={{fontSize:10,color:MUTED,marginTop:1}}>{c.editorial}</div>}
+          </div>
+          <div style={{textAlign:"center",background:GOLD_L,borderRadius:6,padding:"5px 10px",flexShrink:0,marginLeft:10}}>
+            <div style={{fontSize:16,fontWeight:700,color:GOLD,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{daysLeft(c.fechaLimite)}</div>
+            <div style={{fontSize:8,color:GOLD+"99",textTransform:"uppercase",fontWeight:700}}>días</div>
+          </div>
+        </div>
+      ))}
+    </div>}
+
+    <div style={{textAlign:"center",padding:"18px 0 4px",borderTop:`1px solid ${BORDER}`,marginTop:8}}>
+      <div style={{fontSize:10,color:MUTED,lineHeight:1.8}}>
+        CIEPE · Centro Interdisciplinario en Ética, Política y Economía<br/>
+        <span style={{color:"#CCC"}}>8 Laboratorios de Pensamiento · Red internacional de investigadores</span>
+      </div>
+    </div>
+  </div>;
+}
+
 function Root() {
   const [user,setUser]       = useState(undefined);
   const [profile,setProfile] = useState(null);
