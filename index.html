@@ -367,6 +367,365 @@ const TABS = [
   {id:"vid",  label:"Videoteca",    sub:"Ponencias y conferencias"},
 ];
 
+
+// ── CHART COMPONENT ─────────────────────────────────────────────────────────
+function ChartBar({data, labels, colors}){
+  const ref = React.useRef(null);
+  const chartRef = React.useRef(null);
+  React.useEffect(()=>{
+    if(!ref.current||!window.Chart) return;
+    if(chartRef.current) chartRef.current.destroy();
+    chartRef.current = new window.Chart(ref.current, {
+      type:"bar",
+      data:{labels, datasets:[{data, backgroundColor:colors||labels.map((_,i)=>[TEAL,GOLD,"#5B4A8A","#2E7D52","#C0392B","#E67E22"][i%6]), borderRadius:4, borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:MUTED,font:{size:10}}},y:{grid:{color:"#F0F0F0"},ticks:{color:MUTED,font:{size:10},precision:0},beginAtZero:true}}}
+    });
+    return()=>{if(chartRef.current)chartRef.current.destroy();};
+  },[JSON.stringify(data),JSON.stringify(labels)]);
+  return <div style={{position:"relative",height:150}}><canvas ref={ref}/></div>;
+}
+
+function ChartDoughnut({data, labels, colors}){
+  const ref = React.useRef(null);
+  const chartRef = React.useRef(null);
+  React.useEffect(()=>{
+    if(!ref.current||!window.Chart) return;
+    if(chartRef.current) chartRef.current.destroy();
+    const total = data.reduce((a,b)=>a+b,0);
+    chartRef.current = new window.Chart(ref.current, {
+      type:"doughnut",
+      data:{labels, datasets:[{data, backgroundColor:colors||[TEAL,GOLD,"#5B4A8A","#2E7D52","#C0392B","#E67E22","#3498DB"], borderWidth:2, borderColor:"#fff", hoverOffset:4}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"bottom",labels:{font:{size:9},padding:6,color:MUTED,boxWidth:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} (${total?Math.round(ctx.parsed/total*100):0}%)`}}}}
+    });
+    return()=>{if(chartRef.current)chartRef.current.destroy();};
+  },[JSON.stringify(data),JSON.stringify(labels)]);
+  return <div style={{position:"relative",height:170}}><canvas ref={ref}/></div>;
+}
+
+// ── DASHBOARD PANEL ──────────────────────────────────────────────────────────
+function DashboardPanel({acts, pubs, convs, labs}){
+  const today = new Date().toISOString().slice(0,10);
+  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const tiposPub = {};
+  pubs.forEach(p=>{const t=p.tipo||"Otro"; tiposPub[t]=(tiposPub[t]||0)+1;});
+  const pubLabels = Object.keys(tiposPub);
+  const pubData   = Object.values(tiposPub);
+  const now = new Date();
+  const actMeses = Array.from({length:6},(_,i)=>{
+    const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
+    return {key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`, label:meses[d.getMonth()]};
+  });
+  const actPorMes = actMeses.map(m=>acts.filter(a=>a.fecha&&a.fecha.startsWith(m.key)).length);
+  const convEstados = {};
+  convs.forEach(c=>{const e=c.estado||"Sin estado"; convEstados[e]=(convEstados[e]||0)+1;});
+  const convLabels = Object.keys(convEstados);
+  const convData   = Object.values(convEstados);
+  const next = [...acts].filter(a=>a.fecha>=today).sort((a,b)=>a.fecha>b.fecha?1:-1)[0];
+
+  return <div>
+    <div style={{background:TEAL_D,borderRadius:10,padding:"20px 24px",marginBottom:20,color:WHITE,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-20,right:-20,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,0.04)"}}/>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6,position:"relative"}}>
+        Centro Interdisciplinario en Ética, Política y Economía
+      </div>
+      <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.7,position:"relative"}}>
+        Red interdisciplinaria organizada en 8 Laboratorios de Pensamiento activos · Presencia académica internacional
+      </div>
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:20}}>
+      {[
+        {label:"Laboratorios", value:labs.length||8, color:TEAL, icon:"🔬", sub:"activos"},
+        {label:"Actividades",  value:acts.length,    color:"#2E7D52", icon:"📅", sub:"registradas"},
+        {label:"Publicaciones",value:pubs.length,    color:"#5B4A8A", icon:"📄", sub:"en el hub"},
+        {label:"Convocatorias",value:convs.filter(c=>c.estado==="Abierta").length, color:GOLD, icon:"📢", sub:"abiertas"},
+        {label:"Realizadas",   value:acts.filter(a=>a.estado==="Realizado").length, color:"#E67E22", icon:"✅", sub:"actividades"},
+      ].map((m,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"12px 14px",borderTop:`3px solid ${m.color}`}}>
+          <div style={{fontSize:16,marginBottom:4}}>{m.icon}</div>
+          <div style={{fontSize:24,fontWeight:700,color:m.color,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{m.value}</div>
+          <div style={{fontSize:9,color:MUTED,marginTop:3,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>{m.label}</div>
+          <div style={{fontSize:8,color:"#BBB",textTransform:"uppercase"}}>{m.sub}</div>
+        </div>
+      ))}
+    </div>
+
+    {next && <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,borderLeft:`5px solid ${TEAL}`,padding:"14px 18px",marginBottom:20}}>
+      <div style={{fontSize:9,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>Próxima actividad</div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:5}}>{next.titulo}</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",fontSize:11,color:MUTED}}>
+        {next.fecha&&<span>📅 {fmt(next.fecha)}</span>}
+        {next.horario&&<span>🕐 {next.horario}</span>}
+        {next.ponente&&<span>🎙 {next.ponente}</span>}
+      </div>
+      {next.link&&<a href={next.link} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:8,fontSize:11,fontWeight:600,color:TEAL,textDecoration:"none",padding:"3px 8px",borderRadius:4,background:TEAL_L}}>🔗 Acceder</a>}
+    </div>}
+
+    <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Analítica institucional</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,marginBottom:20}}>
+      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
+        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📅 Actividades por mes (últimos 6 meses)</div>
+        {acts.length>0
+          ?<ChartBar data={actPorMes} labels={actMeses.map(m=>m.label)} colors={actMeses.map(()=>TEAL)}/>
+          :<div style={{height:150,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin datos aún — se llenará automáticamente</div>}
+      </div>
+      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
+        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📄 Publicaciones por tipo</div>
+        {pubs.length>0
+          ?<ChartDoughnut data={pubData} labels={pubLabels}/>
+          :<div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin publicaciones aún</div>}
+      </div>
+      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
+        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📢 Convocatorias por estado</div>
+        {convs.length>0
+          ?<ChartDoughnut data={convData} labels={convLabels} colors={[TEAL,"#2E7D52",GOLD,"#C0392B","#AAA"]}/>
+          :<div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin convocatorias aún</div>}
+      </div>
+    </div>
+
+    <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Laboratorios de Pensamiento</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10,marginBottom:20}}>
+      {(labs.length>0?labs:[
+        {nombre:"Bioética aplicada y retos del siglo XXI",director:"Pía Poulet Bustamante Barahona",area:"Interdisciplinar"},
+        {nombre:"Crimen, comunicación y percepción pública",director:"Paulina Andrea Gallardo Gómez",area:"Interdisciplinar"},
+        {nombre:"Educación, liderazgo y justicia social",director:"Johanna Solange Godoy Cerda",area:"Interdisciplinar"},
+        {nombre:"Filosofía del riesgo y justicia epistémica",director:"Max Reyes Lobos",area:"Interdisciplinar"},
+        {nombre:"Filosofía, ética y educación en ciencias",director:"Eduardo Andrés Martín Sanabria",area:"Interdisciplinar"},
+        {nombre:"Inteligencia artificial, derecho y filosofía",director:"Pablo Ruiz Osuna / Isaac Carbajal",area:"Interdisciplinar"},
+        {nombre:"Métodos experimentales para mercados e instituciones",director:"Christopher Douglas Acuña Martínez",area:"Economía"},
+        {nombre:"Ética y conocimiento",director:"Felipe Alejandro Álvarez Osorio",area:"Filosofía"},
+      ]).map((l,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"11px 14px",borderTop:`2px solid ${TEAL}`}}>
+          <div style={{fontSize:8,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{l.area||"Interdisciplinar"}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:12,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:3}}>{l.nombre}</div>
+          <div style={{fontSize:10,color:TEAL,fontWeight:500}}>👤 {l.director}</div>
+        </div>
+      ))}
+    </div>
+
+    {pubs.length>0&&<div style={{marginBottom:20}}>
+      <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Últimas publicaciones</h3>
+      {[...pubs].slice(-3).reverse().map((p,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"10px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
+          <div style={{width:30,height:30,borderRadius:5,background:TEAL_L,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>📄</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontWeight:600,color:TEXT,lineHeight:1.3}}>{p.titulo}</div>
+            <div style={{fontSize:10,color:MUTED,marginTop:2}}>{p.autores}{p.revista?" · "+p.revista:""}</div>
+          </div>
+          {p.link&&<a href={p.link} target="_blank" rel="noreferrer" style={{fontSize:10,color:TEAL,fontWeight:600,textDecoration:"none",flexShrink:0}}>Ver →</a>}
+        </div>
+      ))}
+    </div>}
+
+    {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).length>0&&<div style={{marginBottom:20}}>
+      <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Convocatorias próximas a cerrar</h3>
+      {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).map((c,i)=>(
+        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,borderLeft:`4px solid ${GOLD}`,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:12,fontWeight:500,color:TEXT}}>{c.nombre}</div>
+            {c.editorial&&<div style={{fontSize:10,color:MUTED,marginTop:1}}>{c.editorial}</div>}
+          </div>
+          <div style={{textAlign:"center",background:GOLD_L,borderRadius:6,padding:"5px 10px",flexShrink:0,marginLeft:10}}>
+            <div style={{fontSize:16,fontWeight:700,color:GOLD,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{daysLeft(c.fechaLimite)}</div>
+            <div style={{fontSize:8,color:GOLD+"99",textTransform:"uppercase",fontWeight:700}}>días</div>
+          </div>
+        </div>
+      ))}
+    </div>}
+
+    <div style={{textAlign:"center",padding:"18px 0 4px",borderTop:`1px solid ${BORDER}`,marginTop:8}}>
+      <div style={{fontSize:10,color:MUTED,lineHeight:1.8}}>
+        CIEPE · Centro Interdisciplinario en Ética, Política y Economía<br/>
+        <span style={{color:"#CCC"}}>8 Laboratorios de Pensamiento · Red internacional de investigadores</span>
+      </div>
+    </div>
+  </div>;
+}
+
+
+// ── YOUTUBE HELPER ───────────────────────────────────────────────────────────
+function ytId(url){
+  if(!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
+// ── VIDEOTECA SECTION ─────────────────────────────────────────────────────────
+function Videoteca({vids, isAdmin, onAdd, onDelete}){
+  const [playing, setPlaying] = React.useState(null);
+
+  return <div>
+    {isAdmin && <div style={{background:TEAL_L,borderRadius:10,border:`1px solid ${TEAL}33`,
+      padding:"14px 18px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div>
+        <div style={{fontSize:11,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>Panel de administración</div>
+        <div style={{fontSize:12,color:MUTED}}>Pegá el link de YouTube y completá los datos. Los miembros verán el video al instante.</div>
+      </div>
+      <button onClick={onAdd} style={{background:TEAL,color:WHITE,border:"none",borderRadius:7,
+        padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",
+        display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:12}}>
+        ▶ Agregar video
+      </button>
+    </div>}
+
+    {vids.length===0 && <Empty msg="Las ponencias y conferencias aparecerán aquí. Pronto disponible."/>}
+
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      {vids.map(v=>{
+        const id = ytId(v.youtubeUrl);
+        const isPlaying = playing===v.id;
+        return <div key={v.id} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,overflow:"hidden"}}>
+          {/* Thumbnail / Player */}
+          <div style={{position:"relative",paddingBottom:"56.25%",background:"#000"}}>
+            {isPlaying && id
+              ? <iframe
+                  src={`https://www.youtube.com/embed/${id}?autoplay=1`}
+                  style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen/>
+              : <div onClick={()=>id&&setPlaying(v.id)}
+                  style={{position:"absolute",inset:0,cursor:id?"pointer":"default",
+                    background:`url(https://img.youtube.com/vi/${id||""}/hqdefault.jpg) center/cover no-repeat #111`,
+                    display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {id && <div style={{width:54,height:54,borderRadius:"50%",
+                    background:"rgba(255,0,0,0.85)",display:"flex",alignItems:"center",
+                    justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.4)"}}>
+                    <span style={{fontSize:20,marginLeft:4,color:WHITE}}>▶</span>
+                  </div>}
+                </div>
+            }
+          </div>
+          {/* Info */}
+          <div style={{padding:"14px 18px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1,minWidth:0}}>
+                {v.laboratorio && <div style={{fontSize:9,fontWeight:700,color:GOLD,
+                  textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>
+                  🔬 {v.laboratorio}
+                </div>}
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,
+                  color:TEXT,lineHeight:1.3,marginBottom:6}}>{v.titulo}</div>
+                <div style={{fontSize:11,color:MUTED,display:"flex",flexWrap:"wrap",gap:"4px 14px"}}>
+                  {v.ponente && <MetaRow icon="🎙" text={v.ponente}/>}
+                  {v.fecha   && <MetaRow icon="📅" text={fmt(v.fecha)}/>}
+                </div>
+                {v.descripcion && <div style={{fontSize:12,color:"#555",marginTop:8,
+                  lineHeight:1.6}}>{v.descripcion}</div>}
+              </div>
+              {isAdmin && <button onClick={()=>onDelete(v.id)}
+                style={{background:"none",border:"none",cursor:"pointer",color:"#DDD",
+                  fontSize:16,padding:"2px 4px",flexShrink:0}}>✕</button>}
+            </div>
+            {id && !isPlaying && <button onClick={()=>setPlaying(v.id)}
+              style={{marginTop:10,background:TEAL_L,border:`1px solid ${TEAL}33`,
+                color:TEAL,borderRadius:6,padding:"6px 14px",cursor:"pointer",
+                fontSize:12,fontWeight:600,fontFamily:"inherit",display:"flex",
+                alignItems:"center",gap:5}}>
+              ▶ Ver ponencia
+            </button>}
+          </div>
+        </div>;
+      })}
+    </div>
+  </div>;
+}
+
+// ── MODAL PARA CARGAR VIDEO ───────────────────────────────────────────────────
+function VideoModal({onSave, onClose}){
+  const [fd, setFd] = React.useState({youtubeUrl:"",titulo:"",ponente:"",fecha:"",laboratorio:"",descripcion:""});
+  const sf = (k,v) => setFd(f=>({...f,[k]:v}));
+  const id = ytId(fd.youtubeUrl);
+
+  const LABS_OPTS = [
+    "Bioética aplicada y retos del siglo XXI",
+    "Crimen, comunicación y percepción pública",
+    "Educación, liderazgo y justicia social",
+    "Filosofía del riesgo y justicia epistémica",
+    "Filosofía, ética y educación en ciencias",
+    "Inteligencia artificial, derecho y filosofía",
+    "Métodos experimentales para mercados e instituciones",
+    "Ética y conocimiento",
+  ];
+
+  return <div style={{position:"fixed",inset:0,background:"rgba(10,30,30,0.6)",
+    display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:16}}>
+    <div style={{background:WHITE,borderRadius:12,padding:24,width:"100%",
+      maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:4,height:20,background:TEAL,borderRadius:2}}/>
+          <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,fontWeight:600,color:TEXT,margin:0}}>Agregar video</h3>
+        </div>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#AAA",fontSize:20,padding:4}}>✕</button>
+      </div>
+
+      {/* Link de YouTube */}
+      <div style={{marginBottom:12}}>
+        <label style={{display:"block",fontSize:10,fontWeight:600,color:MUTED,marginBottom:3,
+          textTransform:"uppercase",letterSpacing:"0.07em"}}>Link de YouTube *</label>
+        <input value={fd.youtubeUrl} onChange={e=>sf("youtubeUrl",e.target.value)}
+          placeholder="https://youtu.be/... o https://youtube.com/watch?v=..."
+          style={{width:"100%",padding:"8px 10px",border:`1px solid ${id?"#2E7D52":BORDER}`,
+            borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
+            color:TEXT,background:WHITE,boxSizing:"border-box"}}/>
+        {fd.youtubeUrl && !id && <div style={{fontSize:11,color:"#A02828",marginTop:4}}>
+          Link no reconocido — probá con el formato youtu.be/ID
+        </div>}
+        {id && <div style={{fontSize:11,color:"#2E7D52",marginTop:4}}>✅ Video detectado correctamente</div>}
+      </div>
+
+      {/* Preview thumbnail */}
+      {id && <div style={{marginBottom:12,borderRadius:8,overflow:"hidden",border:`1px solid ${BORDER}`}}>
+        <img src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`} alt="preview"
+          style={{width:"100%",display:"block"}}/>
+      </div>}
+
+      {[
+        {k:"titulo",     label:"Título de la ponencia *", ph:"Ej: Bioética y decisiones clínicas"},
+        {k:"ponente",    label:"Ponente",                  ph:"Nombre del/la ponente"},
+        {k:"fecha",      label:"Fecha",                    type:"date"},
+        {k:"descripcion",label:"Descripción breve",        type:"textarea"},
+      ].map(({k,label,ph,type})=>(
+        <div key={k} style={{marginBottom:12}}>
+          <label style={{display:"block",fontSize:10,fontWeight:600,color:MUTED,marginBottom:3,
+            textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</label>
+          {type==="textarea"
+            ? <textarea value={fd[k]} onChange={e=>sf(k,e.target.value)}
+                placeholder={ph} rows={3}
+                style={{width:"100%",padding:"8px 10px",border:`1px solid ${BORDER}`,
+                  borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
+                  color:TEXT,background:WHITE,boxSizing:"border-box",resize:"vertical"}}/>
+            : <input type={type||"text"} value={fd[k]} onChange={e=>sf(k,e.target.value)}
+                placeholder={ph}
+                style={{width:"100%",padding:"8px 10px",border:`1px solid ${BORDER}`,
+                  borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
+                  color:TEXT,background:WHITE,boxSizing:"border-box"}}/>
+          }
+        </div>
+      ))}
+
+      <div style={{marginBottom:16}}>
+        <label style={{display:"block",fontSize:10,fontWeight:600,color:MUTED,marginBottom:3,
+          textTransform:"uppercase",letterSpacing:"0.07em"}}>Laboratorio</label>
+        <select value={fd.laboratorio} onChange={e=>sf("laboratorio",e.target.value)}
+          style={{width:"100%",padding:"8px 10px",border:`1px solid ${BORDER}`,
+            borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
+            color:TEXT,background:WHITE,boxSizing:"border-box"}}>
+          <option value="">— Sin asignar —</option>
+          {LABS_OPTS.map(l=><option key={l}>{l}</option>)}
+        </select>
+      </div>
+
+      <button onClick={()=>onSave(fd)} disabled={!id||!fd.titulo}
+        style={{width:"100%",background:(!id||!fd.titulo)?"#CCC":TEAL,color:WHITE,
+          border:"none",padding:"11px",borderRadius:7,cursor:(!id||!fd.titulo)?"not-allowed":"pointer",
+          fontSize:14,fontWeight:600,fontFamily:"inherit"}}>
+        Guardar video
+      </button>
+    </div>
+  </div>;
+}
+
 function MainApp({profile,onLogout}) {
   const [tab,setTab]     = useState("cal");
   const [acts,setActs]   = useState([]);
@@ -376,7 +735,7 @@ function MainApp({profile,onLogout}) {
   const [vids,setVids]   = useState([]);
   const [sols,setSols]   = useState([]);
   const [modal,setModal] = useState(null);
-  const [videoModal,setVideoModal] = React.useState(false);
+  const [videoModal,setVideoModal] = useState(false);
   const [joinLab,setJoinLab] = useState(null);
   const [toast,setToast] = useState(null);
 
@@ -419,6 +778,24 @@ function MainApp({profile,onLogout}) {
       notify("Registro guardado.");
     }
     setModal(null);
+  }
+
+  async function handleSaveVideo(data){
+    const id = ytId(data.youtubeUrl);
+    if(!id||!data.titulo) return;
+    await db.collection("videos").add({
+      ...data,
+      youtubeId: id,
+      creadoEn: FieldValue.serverTimestamp()
+    });
+    setVideoModal(false);
+    notify("Video guardado.");
+  }
+
+  async function handleDeleteVideo(vid){
+    if(!confirm("¿Eliminar este video?")) return;
+    await db.collection("videos").doc(vid).delete();
+    notify("Video eliminado.");
   }
 
   async function del(col,id) {
@@ -794,364 +1171,6 @@ function MainApp({profile,onLogout}) {
 }
 
 // ── RAÍZ ──────────────────────────────────────────────────────────────────────
-
-// ── CHART COMPONENT ─────────────────────────────────────────────────────────
-function ChartBar({data, labels, colors}){
-  const ref = React.useRef(null);
-  const chartRef = React.useRef(null);
-  React.useEffect(()=>{
-    if(!ref.current||!window.Chart) return;
-    if(chartRef.current) chartRef.current.destroy();
-    chartRef.current = new window.Chart(ref.current, {
-      type:"bar",
-      data:{labels, datasets:[{data, backgroundColor:colors||labels.map((_,i)=>[TEAL,GOLD,"#5B4A8A","#2E7D52","#C0392B","#E67E22"][i%6]), borderRadius:4, borderSkipped:false}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:MUTED,font:{size:10}}},y:{grid:{color:"#F0F0F0"},ticks:{color:MUTED,font:{size:10},precision:0},beginAtZero:true}}}
-    });
-    return()=>{if(chartRef.current)chartRef.current.destroy();};
-  },[JSON.stringify(data),JSON.stringify(labels)]);
-  return <div style={{position:"relative",height:150}}><canvas ref={ref}/></div>;
-}
-
-function ChartDoughnut({data, labels, colors}){
-  const ref = React.useRef(null);
-  const chartRef = React.useRef(null);
-  React.useEffect(()=>{
-    if(!ref.current||!window.Chart) return;
-    if(chartRef.current) chartRef.current.destroy();
-    const total = data.reduce((a,b)=>a+b,0);
-    chartRef.current = new window.Chart(ref.current, {
-      type:"doughnut",
-      data:{labels, datasets:[{data, backgroundColor:colors||[TEAL,GOLD,"#5B4A8A","#2E7D52","#C0392B","#E67E22","#3498DB"], borderWidth:2, borderColor:"#fff", hoverOffset:4}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"bottom",labels:{font:{size:9},padding:6,color:MUTED,boxWidth:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} (${total?Math.round(ctx.parsed/total*100):0}%)`}}}}
-    });
-    return()=>{if(chartRef.current)chartRef.current.destroy();};
-  },[JSON.stringify(data),JSON.stringify(labels)]);
-  return <div style={{position:"relative",height:170}}><canvas ref={ref}/></div>;
-}
-
-// ── DASHBOARD PANEL ──────────────────────────────────────────────────────────
-function DashboardPanel({acts, pubs, convs, labs}){
-  const today = new Date().toISOString().slice(0,10);
-  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  const tiposPub = {};
-  pubs.forEach(p=>{const t=p.tipo||"Otro"; tiposPub[t]=(tiposPub[t]||0)+1;});
-  const pubLabels = Object.keys(tiposPub);
-  const pubData   = Object.values(tiposPub);
-  const now = new Date();
-  const actMeses = Array.from({length:6},(_,i)=>{
-    const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
-    return {key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`, label:meses[d.getMonth()]};
-  });
-  const actPorMes = actMeses.map(m=>acts.filter(a=>a.fecha&&a.fecha.startsWith(m.key)).length);
-  const convEstados = {};
-  convs.forEach(c=>{const e=c.estado||"Sin estado"; convEstados[e]=(convEstados[e]||0)+1;});
-  const convLabels = Object.keys(convEstados);
-  const convData   = Object.values(convEstados);
-  const next = [...acts].filter(a=>a.fecha>=today).sort((a,b)=>a.fecha>b.fecha?1:-1)[0];
-
-  return <div>
-    <div style={{background:TEAL_D,borderRadius:10,padding:"20px 24px",marginBottom:20,color:WHITE,position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-20,right:-20,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,0.04)"}}/>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6,position:"relative"}}>
-        Centro Interdisciplinario en Ética, Política y Economía
-      </div>
-      <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.7,position:"relative"}}>
-        Red interdisciplinaria organizada en 8 Laboratorios de Pensamiento activos · Presencia académica internacional
-      </div>
-    </div>
-
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:20}}>
-      {[
-        {label:"Laboratorios", value:labs.length||8, color:TEAL, icon:"🔬", sub:"activos"},
-        {label:"Actividades",  value:acts.length,    color:"#2E7D52", icon:"📅", sub:"registradas"},
-        {label:"Publicaciones",value:pubs.length,    color:"#5B4A8A", icon:"📄", sub:"en el hub"},
-        {label:"Convocatorias",value:convs.filter(c=>c.estado==="Abierta").length, color:GOLD, icon:"📢", sub:"abiertas"},
-        {label:"Realizadas",   value:acts.filter(a=>a.estado==="Realizado").length, color:"#E67E22", icon:"✅", sub:"actividades"},
-      ].map((m,i)=>(
-        <div key={i} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"12px 14px",borderTop:`3px solid ${m.color}`}}>
-          <div style={{fontSize:16,marginBottom:4}}>{m.icon}</div>
-          <div style={{fontSize:24,fontWeight:700,color:m.color,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{m.value}</div>
-          <div style={{fontSize:9,color:MUTED,marginTop:3,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>{m.label}</div>
-          <div style={{fontSize:8,color:"#BBB",textTransform:"uppercase"}}>{m.sub}</div>
-        </div>
-      ))}
-    </div>
-
-    {next && <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,borderLeft:`5px solid ${TEAL}`,padding:"14px 18px",marginBottom:20}}>
-      <div style={{fontSize:9,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>Próxima actividad</div>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:5}}>{next.titulo}</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",fontSize:11,color:MUTED}}>
-        {next.fecha&&<span>📅 {fmt(next.fecha)}</span>}
-        {next.horario&&<span>🕐 {next.horario}</span>}
-        {next.ponente&&<span>🎙 {next.ponente}</span>}
-      </div>
-      {next.link&&<a href={next.link} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:8,fontSize:11,fontWeight:600,color:TEAL,textDecoration:"none",padding:"3px 8px",borderRadius:4,background:TEAL_L}}>🔗 Acceder</a>}
-    </div>}
-
-    <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Analítica institucional</h3>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,marginBottom:20}}>
-      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
-        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📅 Actividades por mes (últimos 6 meses)</div>
-        {acts.length>0
-          ?<ChartBar data={actPorMes} labels={actMeses.map(m=>m.label)} colors={actMeses.map(()=>TEAL)}/>
-          :<div style={{height:150,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin datos aún — se llenará automáticamente</div>}
-      </div>
-      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
-        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📄 Publicaciones por tipo</div>
-        {pubs.length>0
-          ?<ChartDoughnut data={pubData} labels={pubLabels}/>
-          :<div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin publicaciones aún</div>}
-      </div>
-      <div style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,padding:"14px 16px"}}>
-        <div style={{fontSize:9,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📢 Convocatorias por estado</div>
-        {convs.length>0
-          ?<ChartDoughnut data={convData} labels={convLabels} colors={[TEAL,"#2E7D52",GOLD,"#C0392B","#AAA"]}/>
-          :<div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#DDD",fontSize:12,fontStyle:"italic"}}>Sin convocatorias aún</div>}
-      </div>
-    </div>
-
-    <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Laboratorios de Pensamiento</h3>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10,marginBottom:20}}>
-      {(labs.length>0?labs:[
-        {nombre:"Bioética aplicada y retos del siglo XXI",director:"Pía Poulet Bustamante Barahona",area:"Interdisciplinar"},
-        {nombre:"Crimen, comunicación y percepción pública",director:"Paulina Andrea Gallardo Gómez",area:"Interdisciplinar"},
-        {nombre:"Educación, liderazgo y justicia social",director:"Johanna Solange Godoy Cerda",area:"Interdisciplinar"},
-        {nombre:"Filosofía del riesgo y justicia epistémica",director:"Max Reyes Lobos",area:"Interdisciplinar"},
-        {nombre:"Filosofía, ética y educación en ciencias",director:"Eduardo Andrés Martín Sanabria",area:"Interdisciplinar"},
-        {nombre:"Inteligencia artificial, derecho y filosofía",director:"Pablo Ruiz Osuna / Isaac Carbajal",area:"Interdisciplinar"},
-        {nombre:"Métodos experimentales para mercados e instituciones",director:"Christopher Douglas Acuña Martínez",area:"Economía"},
-        {nombre:"Ética y conocimiento",director:"Felipe Alejandro Álvarez Osorio",area:"Filosofía"},
-      ]).map((l,i)=>(
-        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"11px 14px",borderTop:`2px solid ${TEAL}`}}>
-          <div style={{fontSize:8,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{l.area||"Interdisciplinar"}</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:12,fontWeight:600,color:TEXT,lineHeight:1.3,marginBottom:3}}>{l.nombre}</div>
-          <div style={{fontSize:10,color:TEAL,fontWeight:500}}>👤 {l.director}</div>
-        </div>
-      ))}
-    </div>
-
-    {pubs.length>0&&<div style={{marginBottom:20}}>
-      <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Últimas publicaciones</h3>
-      {[...pubs].slice(-3).reverse().map((p,i)=>(
-        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,padding:"10px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
-          <div style={{width:30,height:30,borderRadius:5,background:TEAL_L,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>📄</div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontWeight:600,color:TEXT,lineHeight:1.3}}>{p.titulo}</div>
-            <div style={{fontSize:10,color:MUTED,marginTop:2}}>{p.autores}{p.revista?" · "+p.revista:""}</div>
-          </div>
-          {p.link&&<a href={p.link} target="_blank" rel="noreferrer" style={{fontSize:10,color:TEAL,fontWeight:600,textDecoration:"none",flexShrink:0}}>Ver →</a>}
-        </div>
-      ))}
-    </div>}
-
-    {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).length>0&&<div style={{marginBottom:20}}>
-      <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600,color:TEXT,marginBottom:12}}>Convocatorias próximas a cerrar</h3>
-      {convs.filter(c=>{const d=daysLeft(c.fechaLimite);return d!==null&&d<=30&&d>=0;}).map((c,i)=>(
-        <div key={i} style={{background:WHITE,borderRadius:8,border:`1px solid ${BORDER}`,borderLeft:`4px solid ${GOLD}`,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:12,fontWeight:500,color:TEXT}}>{c.nombre}</div>
-            {c.editorial&&<div style={{fontSize:10,color:MUTED,marginTop:1}}>{c.editorial}</div>}
-          </div>
-          <div style={{textAlign:"center",background:GOLD_L,borderRadius:6,padding:"5px 10px",flexShrink:0,marginLeft:10}}>
-            <div style={{fontSize:16,fontWeight:700,color:GOLD,fontFamily:"'Cormorant Garamond',serif",lineHeight:1}}>{daysLeft(c.fechaLimite)}</div>
-            <div style={{fontSize:8,color:GOLD+"99",textTransform:"uppercase",fontWeight:700}}>días</div>
-          </div>
-        </div>
-      ))}
-    </div>}
-
-    <div style={{textAlign:"center",padding:"18px 0 4px",borderTop:`1px solid ${BORDER}`,marginTop:8}}>
-      <div style={{fontSize:10,color:MUTED,lineHeight:1.8}}>
-        CIEPE · Centro Interdisciplinario en Ética, Política y Economía<br/>
-        <span style={{color:"#CCC"}}>8 Laboratorios de Pensamiento · Red internacional de investigadores</span>
-      </div>
-    </div>
-  </div>;
-}
-
-
-// ── YOUTUBE HELPER ───────────────────────────────────────────────────────────
-function ytId(url){
-  if(!url) return null;
-  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
-  return m ? m[1] : null;
-}
-
-// ── VIDEOTECA SECTION ─────────────────────────────────────────────────────────
-function Videoteca({vids, isAdmin, onAdd, onDelete}){
-  const [playing, setPlaying] = React.useState(null);
-
-  return <div>
-    {isAdmin && <div style={{background:TEAL_L,borderRadius:10,border:`1px solid ${TEAL}33`,
-      padding:"14px 18px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div>
-        <div style={{fontSize:11,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>Panel de administración</div>
-        <div style={{fontSize:12,color:MUTED}}>Pegá el link de YouTube y completá los datos. Los miembros verán el video al instante.</div>
-      </div>
-      <button onClick={onAdd} style={{background:TEAL,color:WHITE,border:"none",borderRadius:7,
-        padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",
-        display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:12}}>
-        ▶ Agregar video
-      </button>
-    </div>}
-
-    {vids.length===0 && <Empty msg="Las ponencias y conferencias aparecerán aquí. Pronto disponible."/>}
-
-    <div style={{display:"flex",flexDirection:"column",gap:16}}>
-      {vids.map(v=>{
-        const id = ytId(v.youtubeUrl);
-        const isPlaying = playing===v.id;
-        return <div key={v.id} style={{background:WHITE,borderRadius:10,border:`1px solid ${BORDER}`,overflow:"hidden"}}>
-          {/* Thumbnail / Player */}
-          <div style={{position:"relative",paddingBottom:"56.25%",background:"#000"}}>
-            {isPlaying && id
-              ? <iframe
-                  src={`https://www.youtube.com/embed/${id}?autoplay=1`}
-                  style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen/>
-              : <div onClick={()=>id&&setPlaying(v.id)}
-                  style={{position:"absolute",inset:0,cursor:id?"pointer":"default",
-                    background:`url(https://img.youtube.com/vi/${id||""}/hqdefault.jpg) center/cover no-repeat #111`,
-                    display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  {id && <div style={{width:54,height:54,borderRadius:"50%",
-                    background:"rgba(255,0,0,0.85)",display:"flex",alignItems:"center",
-                    justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.4)"}}>
-                    <span style={{fontSize:20,marginLeft:4,color:WHITE}}>▶</span>
-                  </div>}
-                </div>
-            }
-          </div>
-          {/* Info */}
-          <div style={{padding:"14px 18px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-              <div style={{flex:1,minWidth:0}}>
-                {v.laboratorio && <div style={{fontSize:9,fontWeight:700,color:GOLD,
-                  textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>
-                  🔬 {v.laboratorio}
-                </div>}
-                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,
-                  color:TEXT,lineHeight:1.3,marginBottom:6}}>{v.titulo}</div>
-                <div style={{fontSize:11,color:MUTED,display:"flex",flexWrap:"wrap",gap:"4px 14px"}}>
-                  {v.ponente && <MetaRow icon="🎙" text={v.ponente}/>}
-                  {v.fecha   && <MetaRow icon="📅" text={fmt(v.fecha)}/>}
-                </div>
-                {v.descripcion && <div style={{fontSize:12,color:"#555",marginTop:8,
-                  lineHeight:1.6}}>{v.descripcion}</div>}
-              </div>
-              {isAdmin && <button onClick={()=>onDelete(v.id)}
-                style={{background:"none",border:"none",cursor:"pointer",color:"#DDD",
-                  fontSize:16,padding:"2px 4px",flexShrink:0}}>✕</button>}
-            </div>
-            {id && !isPlaying && <button onClick={()=>setPlaying(v.id)}
-              style={{marginTop:10,background:TEAL_L,border:`1px solid ${TEAL}33`,
-                color:TEAL,borderRadius:6,padding:"6px 14px",cursor:"pointer",
-                fontSize:12,fontWeight:600,fontFamily:"inherit",display:"flex",
-                alignItems:"center",gap:5}}>
-              ▶ Ver ponencia
-            </button>}
-          </div>
-        </div>;
-      })}
-    </div>
-  </div>;
-}
-
-// ── MODAL PARA CARGAR VIDEO ───────────────────────────────────────────────────
-function VideoModal({onSave, onClose}){
-  const [fd, setFd] = React.useState({youtubeUrl:"",titulo:"",ponente:"",fecha:"",laboratorio:"",descripcion:""});
-  const sf = (k,v) => setFd(f=>({...f,[k]:v}));
-  const id = ytId(fd.youtubeUrl);
-
-  const LABS_OPTS = [
-    "Bioética aplicada y retos del siglo XXI",
-    "Crimen, comunicación y percepción pública",
-    "Educación, liderazgo y justicia social",
-    "Filosofía del riesgo y justicia epistémica",
-    "Filosofía, ética y educación en ciencias",
-    "Inteligencia artificial, derecho y filosofía",
-    "Métodos experimentales para mercados e instituciones",
-    "Ética y conocimiento",
-  ];
-
-  return <div style={{position:"fixed",inset:0,background:"rgba(10,30,30,0.6)",
-    display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:16}}>
-    <div style={{background:WHITE,borderRadius:12,padding:24,width:"100%",
-      maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:4,height:20,background:TEAL,borderRadius:2}}/>
-          <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,fontWeight:600,color:TEXT,margin:0}}>Agregar video</h3>
-        </div>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#AAA",fontSize:20,padding:4}}>✕</button>
-      </div>
-
-      {/* Link de YouTube */}
-      <div style={{marginBottom:12}}>
-        <label style={{display:"block",fontSize:10,fontWeight:600,color:MUTED,marginBottom:3,
-          textTransform:"uppercase",letterSpacing:"0.07em"}}>Link de YouTube *</label>
-        <input value={fd.youtubeUrl} onChange={e=>sf("youtubeUrl",e.target.value)}
-          placeholder="https://youtu.be/... o https://youtube.com/watch?v=..."
-          style={{width:"100%",padding:"8px 10px",border:`1px solid ${id?"#2E7D52":BORDER}`,
-            borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
-            color:TEXT,background:WHITE,boxSizing:"border-box"}}/>
-        {fd.youtubeUrl && !id && <div style={{fontSize:11,color:"#A02828",marginTop:4}}>
-          Link no reconocido — probá con el formato youtu.be/ID
-        </div>}
-        {id && <div style={{fontSize:11,color:"#2E7D52",marginTop:4}}>✅ Video detectado correctamente</div>}
-      </div>
-
-      {/* Preview thumbnail */}
-      {id && <div style={{marginBottom:12,borderRadius:8,overflow:"hidden",border:`1px solid ${BORDER}`}}>
-        <img src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`} alt="preview"
-          style={{width:"100%",display:"block"}}/>
-      </div>}
-
-      {[
-        {k:"titulo",     label:"Título de la ponencia *", ph:"Ej: Bioética y decisiones clínicas"},
-        {k:"ponente",    label:"Ponente",                  ph:"Nombre del/la ponente"},
-        {k:"fecha",      label:"Fecha",                    type:"date"},
-        {k:"descripcion",label:"Descripción breve",        type:"textarea"},
-      ].map(({k,label,ph,type})=>(
-        <div key={k} style={{marginBottom:12}}>
-          <label style={{display:"block",fontSize:10,fontWeight:600,color:MUTED,marginBottom:3,
-            textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</label>
-          {type==="textarea"
-            ? <textarea value={fd[k]} onChange={e=>sf(k,e.target.value)}
-                placeholder={ph} rows={3}
-                style={{width:"100%",padding:"8px 10px",border:`1px solid ${BORDER}`,
-                  borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
-                  color:TEXT,background:WHITE,boxSizing:"border-box",resize:"vertical"}}/>
-            : <input type={type||"text"} value={fd[k]} onChange={e=>sf(k,e.target.value)}
-                placeholder={ph}
-                style={{width:"100%",padding:"8px 10px",border:`1px solid ${BORDER}`,
-                  borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
-                  color:TEXT,background:WHITE,boxSizing:"border-box"}}/>
-          }
-        </div>
-      ))}
-
-      <div style={{marginBottom:16}}>
-        <label style={{display:"block",fontSize:10,fontWeight:600,color:MUTED,marginBottom:3,
-          textTransform:"uppercase",letterSpacing:"0.07em"}}>Laboratorio</label>
-        <select value={fd.laboratorio} onChange={e=>sf("laboratorio",e.target.value)}
-          style={{width:"100%",padding:"8px 10px",border:`1px solid ${BORDER}`,
-            borderRadius:6,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",
-            color:TEXT,background:WHITE,boxSizing:"border-box"}}>
-          <option value="">— Sin asignar —</option>
-          {LABS_OPTS.map(l=><option key={l}>{l}</option>)}
-        </select>
-      </div>
-
-      <button onClick={()=>onSave(fd)} disabled={!id||!fd.titulo}
-        style={{width:"100%",background:(!id||!fd.titulo)?"#CCC":TEAL,color:WHITE,
-          border:"none",padding:"11px",borderRadius:7,cursor:(!id||!fd.titulo)?"not-allowed":"pointer",
-          fontSize:14,fontWeight:600,fontFamily:"inherit"}}>
-        Guardar video
-      </button>
-    </div>
-  </div>;
-}
 
 function Root() {
   const [user,setUser]       = useState(undefined);
