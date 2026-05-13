@@ -124,6 +124,18 @@ function LoginScreen() {
   const [institucion,setInst]  = useState("");
   const [error,setError]       = useState("");
   const [loading,setLoading]   = useState(false);
+  const [resetSent,setResetSent] = useState(false);
+
+  async function resetPassword(){
+    if(!email){setError("Ingresá tu correo para recuperar la contraseña.");return;}
+    try{
+      await auth.sendPasswordResetEmail(email);
+      setResetSent(true);setError("");
+    }catch(e){
+      const msgs={"auth/user-not-found":"No existe una cuenta con ese correo.","auth/invalid-email":"Correo inválido."};
+      setError(msgs[e.code]||e.message);
+    }
+  }
 
   async function submit() {
     setError(""); setLoading(true);
@@ -190,6 +202,20 @@ function LoginScreen() {
 
         {error && <div style={{fontSize:12,color:"#A02828",marginBottom:14,
           padding:"8px 12px",background:"#FFF0F0",borderRadius:6,lineHeight:1.5}}>{error}</div>}
+
+        {mode==="login" && !resetSent && <div style={{textAlign:"right",marginBottom:10,marginTop:-6}}>
+          <button onClick={resetPassword} style={{background:"none",border:"none",cursor:"pointer",
+            color:TEAL,fontSize:11,fontFamily:"inherit",textDecoration:"underline",padding:0}}>
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>}
+
+        {resetSent && <div style={{fontSize:12,color:"#2E7D52",marginBottom:14,
+          padding:"10px 14px",background:"#F0FBF4",borderRadius:6,lineHeight:1.6,
+          border:"1px solid #2E7D5233"}}>
+          ✅ Te enviamos un email a <strong>{email}</strong> con las instrucciones para restablecer tu contraseña.
+          Revisá también la carpeta de spam.
+        </div>}
 
         <button onClick={submit} disabled={loading} style={{
           width:"100%",background:TEAL,color:WHITE,border:"none",padding:"13px",
