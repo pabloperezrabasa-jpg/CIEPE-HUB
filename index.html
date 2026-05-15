@@ -830,9 +830,16 @@ function MainApp({profile,onLogout}) {
     notify("Eliminado.");
   }
 
-  async function procesarSol(id) {
+  const [procesarModal, setProcesarModal] = useState(null);
+
+  async function procesarSol(sol) {
+    setProcesarModal(sol);
+  }
+
+  async function confirmarProcesada(id) {
     await db.collection("solicitudes").doc(id).update({estado:"Procesada"});
-    notify("Solicitud procesada.");
+    notify("Solicitud marcada como procesada.");
+    setProcesarModal(null);
   }
 
   const cur    = TABS.find(t=>t.id===tab);
@@ -1066,7 +1073,7 @@ function MainApp({profile,onLogout}) {
                     {s.motivacion && <div style={{color:"#555",marginTop:2,
                       fontStyle:"italic",fontSize:11}}>{s.motivacion}</div>}
                   </div>
-                  <button onClick={()=>procesarSol(s.id)} style={{
+                  <button onClick={()=>procesarSol(s)} style={{
                     background:TEAL,color:WHITE,border:"none",borderRadius:4,
                     padding:"5px 12px",cursor:"pointer",fontSize:11,
                     fontFamily:"inherit",flexShrink:0}}>Procesar</button>
@@ -1191,12 +1198,111 @@ function MainApp({profile,onLogout}) {
       {videoModal && <VideoModal onSave={handleSaveVideo} onClose={()=>setVideoModal(false)}/>}
       {modal   && <EntryModal type={modal.type} initial={modal.item}
                     onSave={handleSave} onClose={()=>setModal(null)}/>}
+      {procesarModal && <ProcesarModal
+        sol={procesarModal}
+        onConfirm={()=>confirmarProcesada(procesarModal.id)}
+        onClose={()=>setProcesarModal(null)}
+      />}
       {joinLab && <JoinModal lab={joinLab} onClose={()=>setJoinLab(null)} profile={profile}/>}
     </div>
   );
 }
 
 // ── RAÍZ ──────────────────────────────────────────────────────────────────────
+
+
+// ── MODAL PROCESAR SOLICITUD ─────────────────────────────────────────────────
+function ProcesarModal({sol, onConfirm, onClose}) {
+  const FORM_URL = "https://pabloperezrabasa-jpg.github.io/CIEPE-HUB/adscripcion.html";
+
+  function enviarWA() {
+    const msg = encodeURIComponent(
+      `Hola ${sol.nombre}, gracias por tu interés en adscribirte al ${sol.laboratorio} de CIEPE.\n\n` +
+      `Para completar tu solicitud, por favor descargá y completá el formulario oficial:\n${FORM_URL}\n\n` +
+      `Una vez completado, envialo a contacto@fundacionciepe.org.\n\nSaludos,\nCoordinación Académica — CIEPE`
+    );
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
+  }
+
+  function enviarEmail() {
+    const subject = encodeURIComponent("Formulario de Adscripción — CIEPE");
+    const body = encodeURIComponent(
+      `Estimado/a ${sol.nombre},\n\n` +
+      `Gracias por tu interés en adscribirte al ${sol.laboratorio} de CIEPE.\n\n` +
+      `Para completar tu solicitud, te pedimos descargar y completar el formulario oficial disponible en:\n${FORM_URL}\n\n` +
+      `Una vez completado, envialo junto a tu CV y documentación a contacto@fundacionciepe.org.\n\n` +
+      `Saludos cordiales,\nJosé Pablo Pérez Rabasa\nCoordinador Académico — CIEPE`
+    );
+    window.open(`mailto:${sol.email}?subject=${subject}&body=${body}`, "_blank");
+  }
+
+  return <div style={{position:"fixed",inset:0,background:"rgba(10,30,30,0.6)",
+    display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:16}}>
+    <div style={{background:WHITE,borderRadius:12,padding:26,width:"100%",
+      maxWidth:460,boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:4,height:20,background:TEAL,borderRadius:2}}/>
+          <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,fontWeight:600,color:TEXT,margin:0}}>
+            Procesar solicitud
+          </h3>
+        </div>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#AAA",fontSize:20,padding:4}}>✕</button>
+      </div>
+
+      <div style={{background:TEAL_L,borderRadius:8,padding:"14px 16px",marginBottom:18}}>
+        <div style={{fontSize:9,fontWeight:700,color:TEAL,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>
+          Datos del solicitante
+        </div>
+        <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:4}}>{sol.nombre}</div>
+        <div style={{fontSize:12,color:MUTED,marginBottom:3}}>📧 {sol.email}</div>
+        <div style={{fontSize:12,color:TEAL,fontWeight:500,marginBottom:sol.motivacion?6:0}}>🔬 {sol.laboratorio}</div>
+        {sol.motivacion && <div style={{fontSize:11,color:"#555",fontStyle:"italic",lineHeight:1.5,
+          borderTop:`1px solid ${TEAL}22`,paddingTop:6,marginTop:4}}>
+          "{sol.motivacion}"
+        </div>}
+      </div>
+
+      <div style={{fontSize:12,color:MUTED,marginBottom:14,lineHeight:1.6}}>
+        Enviá el formulario oficial de adscripción para que el solicitante lo complete y lo devuelva con su documentación.
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+        <button onClick={enviarEmail} style={{
+          width:"100%",background:TEAL,color:WHITE,border:"none",borderRadius:7,
+          padding:"11px",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          📧 Enviar formulario por Email
+        </button>
+        <button onClick={enviarWA} style={{
+          width:"100%",background:"#25D366",color:WHITE,border:"none",borderRadius:7,
+          padding:"11px",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          💬 Enviar formulario por WhatsApp
+        </button>
+        <a href={FORM_URL} target="_blank" rel="noreferrer" style={{
+          width:"100%",background:"transparent",color:TEAL,border:`1px solid ${TEAL}33`,
+          borderRadius:7,padding:"9px",cursor:"pointer",fontSize:12,fontFamily:"inherit",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:8,textDecoration:"none"}}>
+          🔗 Ver formulario en nueva pestaña
+        </a>
+      </div>
+
+      <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:14}}>
+        <div style={{fontSize:11,color:MUTED,marginBottom:10}}>
+          ¿Ya enviaste el formulario y querés marcar esta solicitud como procesada?
+        </div>
+        <button onClick={onConfirm} style={{
+          width:"100%",background:"#2E7D52",color:WHITE,border:"none",borderRadius:7,
+          padding:"10px",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit"}}>
+          ✅ Marcar como procesada
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
 
 function Root() {
   const [user,setUser]       = useState(undefined);
