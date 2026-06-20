@@ -7,6 +7,22 @@
 <meta name="theme-color" content="#0F4446"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon.png"/>
+<link rel="icon" href="icon.png"/>
+<script>
+  // Mata cualquier Service Worker y caché vieja que haya quedado registrada
+  // de un deploy anterior. Esto es lo que estaba sirviendo una versión
+  // desactualizada del index.html (con un import roto) en vez del archivo actual.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (reg) { reg.unregister(); });
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then(function (names) {
+      names.forEach(function (name) { caches.delete(name); });
+    });
+  }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#F4EFE7;font-family:'DM Sans',sans-serif}</style>
